@@ -1,0 +1,2045 @@
+#!/usr/bin/perl
+
+#############################################################################
+# embedded files
+#############################################################################
+
+package MAS::Embed;
+
+$ui = <<XML;
+<ui>
+  <menubar name="MenuBar">
+    <menu name="FileMenu" action="FileMenu">
+      <menuitem name="Load_I" action="Load_I" />
+      <menuitem name="Load_N" action="Load_N" />
+      <menuitem name="Save" action="Save" />
+      <separator />
+      <menuitem name="Quit" action="Quit" />
+    </menu>
+    <menu name="EditMenu" action="EditMenu">
+      <menuitem name="Grid_M" action="Grid_M"/>
+      <menuitem name="Grid_A" action="Grid_A"/>
+      <menuitem name="Grid_L" action="Grid_L"/>
+      <separator />
+      <menuitem name="Prefs" action="Prefs" />
+    </menu>
+    <menu name="ViewMenu" action="ViewMenu">
+      <menuitem name="Show_Grid" action="Show_Grid"/>
+      <menuitem name="HL_Used" action="HL_Used"/>
+      <separator />
+      <menuitem name="Zoom_In" action="Zoom_In"/>
+      <menuitem name="Zoom_Out" action="Zoom_Out"/>
+      <menuitem name="Zoom_Fit" action="Zoom_Fit"/>
+      <menuitem name="Zoom_100" action="Zoom_100"/>
+    </menu>
+    <menu name="HelpMenu" action="HelpMenu">
+      <menuitem name="About" action="About"/>
+    </menu>
+  </menubar>
+</ui>
+XML
+
+$icon_B2B_16 = <<PNG;
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
+AAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADASURB
+VDiNpZPBDYMwDEWf067TLsClR3Yoc/SKI3FiDtihC7AAnYYDuBdaEZpIFL5kyZKTp287ETPjqBSw
+naEyJ7t1Brg/ntHiq2vouwZVpSzLoOa9R1URwFKAJSQ2KxEh2cI1K7hkBQBtnX8BIhLkDsDMglBV
++q6JOlo7cbFD637XtpOAdfFvB/88qqqqgHmNSwcpiHMuiGEYfgGpy6k1t3UeH+LH3hYJYCIStbdF
+pxlyMzOmaWIcx82XAS9Hv/MbCXls+cixbw4AAAAASUVORK5CYII=
+PNG
+
+$icon_ch_white = <<PNG;
+iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAYAAAA7bUf6AAAAAXNSR0IArs4c6QAAAAZiS0dEAAAA
+AAAA+UO7fwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB90EFxMwAJscR20AAAAZdEVYdENv
+bW1lbnQAQ3JlYXRlZCB3aXRoIEdJTVBXgQ4XAAAALUlEQVQ4y2NgIAD+////n5AaJgYqgFFDBrMh
+jITSASMjIyMxaWU0sY0aQggAAMpCEBLL4xSxAAAAAElFTkSuQmCC
+PNG
+
+$icon_ch_green = <<PNG;
+iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAYAAAA7bUf6AAAABmJLR0QA/wD/AP+gvaeTAAAACXBI
+WXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3gEUFQwjEsRhYgAAABl0RVh0Q29tbWVudABDcmVhdGVk
+IHdpdGggR0lNUFeBDhcAAAAtSURBVDjLY2AgACL+y24mpIaJgQpg1JDBbAgjoXSwgvGxLzFpZTSx
+jRpCCAAAiWsKk6T5wbEAAAAASUVORK5CYII=
+PNG
+
+$icon_chip_128 = <<PNG;
+iVBORw0KGgoAAAANSUhEUgAAAIAAAACABAMAAAAxEHz4AAAAGFBMVEUJCQkrKytJSUlqamqJiYmn
+p6fBwcHl5eVKiJDEAAAAAWJLR0QAiAUdSAAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB94B
+EgIyGN4IeRIAAAPJSURBVGje3VlLc5swEGYFTq8rHDtX2Ul8ps3rShJnesWOf0CayUzPbQ/9+wWB
+ZQlWgED2ZKocYoP0Sfv6dlcOgv9ghOlMPLPNJLnl2+LzTnsHmyi9RnLZTNzCNkorgHUBcMdfo2xl
+AvyI0hUNME9e2LsEGD0AnaZjY22UVd94/nd4jjQ+LPRvk2ItiOEnYMKHDqJsih076Z8XgZI0X1ua
+kbkAYANg9LArYtpu73W1VpmxMe6NFZwl+umD4OfejFZHgvajx85OaAFuiMAeO07wYO5biGZuIDoA
+rtAzoSRqQxqZk+Y96E95Ux0AbQBSBOZPDtOWUnGt6NV8UCeLDqSQvzovXl9kuThyokkWEvgskyun
++GLEAuonCIWFwbTYAYz95QVTFQtt6w9lBT2wJHmCFYBrADt18Ls6gMfRh1nDhIiLG2VG6AQ4e4tN
+r8wFhr8OmYmcs/SlgyibG1pYhhupeWJXMoHkCjqvkeejVd+emcRKmEgQCvQgmjJUmunaBrAMPtWA
+r5rVcEj9g/Ap5HhqDYJucWA7EsDn2POaZVeUHmdjp8ITb/eBRdNVTrwr0ecEgf0EsXdPJAoM5ZWy
+NsQGKRgmWtAA0Bdg7MAhcNz8LDOy3iiYpiDo58aTs/kZC5JeL/fhaUSUqjKWbRKWxbDuHSZdFQC8
+3nQNGPOkjzugIYJeB6NyKmzXNh5wWNLIQOGIvudc6LWyWx/IFUD1TYrz5S3GFk+Jzaah0sf+X7MW
+grZWpai4SyWO6f06zMit3WdPRuBGBX3SrDCYrrRFLKWt6ZDvHZ8PaVnJbtU2UVae30XJHrBpTSw2
+gLzrsAN4qzFNR2JPTTmEA03H4Z9GNJbmxc7LBbvNcJR7WceylJBKD1PclWyDZONkis/JVzdVzmTi
+aMUoOGsETfYF1zAHESVHrK058QBcDvhRf/jN1u+1+UT9BKdm1Ho6w35uDWMB/KcBM7WJQzVG1E4F
+qfL6rfVlMR+qvkPyIHzIOeHvpjjYqRTUTiBOpwrFAaDdb61VTLkhsiEA7swJzXKq9pIhpXJ1VFml
+wb7tq7+sbmJgcbJIwnFUFLB30r36typUv+AEMKTzgXo0chd9LCpLgQYQG+F8pACq3SWULo59cpd8
+PskehCHm5FcDhXbfvFoXMsji2q9hSe8TTL2Q7KHhKP2Gs4SgWF5XnHwwEyMB5okPEfQ+ul/AHVRa
+/V5ApHSrr+bd+/53AQ54kbR2790EEaJ7kdUck3SFu5Au4MNsJtb0snt4DTNphSi5xueQvoxmaSQs
+dy1XvAA4XoiecPwDAPdF/C54megAAAAASUVORK5CYII=
+PNG
+
+$icon_zoomsel_16 = <<PNG;
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
+AAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAA7SURB
+VDiN7Y8hFsAwFIOg978zU6vvn5koKiZ5wSBKNIDT7B4YYjXtgrb2rSHrS5nyKlwF+I/Cq3GagQfk
+BD8VMbZKeAAAAABJRU5ErkJggg==
+PNG
+
+$icon_zoomsel_22 = <<PNG;
+iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
+AAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABFSURB
+VDiN7dCxDQAxDMNAKvvvzBSP1wROZ1auBPgiiIZEgKk7HR4u6vQmJJ6+Mdx5MYpmKb6Woi1FW4q2
+FO09xc8xdQMXantXH2xCmzIAAAAASUVORK5CYII=
+PNG
+
+$icon_zoomsel_24 = <<PNG;
+iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlz
+AAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABSSURB
+VEiJ7ZYxCsAwDMRO+f+f1SmBTIVS48XaAiYCazEmRgmYzY9vjqACcJV8vFFQ3we/Aq5rdwXUrqhc
+MA36BdOgXzAN+gXToF9wGhSdLEnyAHiTURhVGUuqAAAAAElFTkSuQmCC
+PNG
+
+package main;
+
+use strict;
+use warnings;
+use File::Basename qw/basename/;
+use File::Temp qw/tempfile/;
+use FindBin;
+use Getopt::Long;
+use Gtk2 '-init';
+use Glib qw(TRUE FALSE);
+use Imager;
+use List::MoreUtils(qw/uniq any/);
+use List::Util;
+use Math::FFT;
+use Math::Trig;
+use Memoize qw/memoize flush_cache/;
+use MIME::Base64 qw/decode_base64/;
+use PDL::NiceSlice;
+use PDL::Image2D;
+use PDL::Transform;
+#use PDL::IO::FITS;
+use PDL::IO::Pic;
+use Time::Piece;
+
+use lib $FindBin::Bin;
+use GridCanvas;
+
+
+# constants
+use constant ZI => 1.25;
+use constant ZO => 0.80;
+
+# globals
+my $NAME    = 'gRidderM';
+my $VERSION = '0.3a';
+my $YEAR    = 2014;
+my $gobjs   = {};
+my $cursors = {};
+my $ndf     = {}; # store ndf data and metadata
+my $embedded = get_embedded();
+my $chip_rotation = 0;
+my %extract_functions = (
+    'center' => \&get_value_center,
+    'median' => \&get_value_median,
+    'mean'   => \&get_value_mean,
+);
+my $zoom_mode = 0;
+
+my @quadrants;
+# these should be added to the quadrant objects
+#my @grid_methods = ();
+#my @man_points;
+#my @all_corners;
+#my @pdls;
+#my $bits;
+my $curr_bits;
+#my $framed = 0;
+#my @best_corners;
+#my @reordered;
+#my @image_fns;
+my $curr_quad   = 0;
+
+# these should be in gobjs
+my @array_info_lbls;
+my @feature_info_lbls;
+
+# configurable parameters
+my $in_dir;
+my $pair_fn;
+my $padding = 0;
+my $method  = 'median';
+my $bg_rm   = 1;
+my $upper   = 0.95;
+my $lower   = 0.50;
+my $cbin    = 2;
+my $fbin    = 2;
+my $thresh  = 0.9;
+my $smooth  = 1;
+my $crop    = 5;
+my $opt_th  = 0.5;
+my $edge_th = 0.2;
+my $edge_rm = 0.05;
+my $edge_win    = 100;
+my $quad_width  = 38;
+my $quad_height = 38;
+my $do_auto;
+my $do_auto_all;
+my $force_overwrite;
+
+# debugging parameters
+my $debug;
+my $fft_fn;
+my $peaks_fn;
+my $diff_fn;
+my $rot_fn;
+my $vote_fn;
+my $theta_fn;
+
+
+my $success = GetOptions(
+
+    'dir:s'       => \$in_dir,
+    'pair_out:s'  => \$pair_fn,
+    'padding:i'   => \$padding,
+    'method:s'    => \$method,
+    'bg_rm'       => \$bg_rm,
+    'upper=f'     => \$upper,
+    'lower=f'     => \$lower,
+    'cbin=f'      => \$cbin,
+    'fbin=f'      => \$fbin,
+    'thresh=f'    => \$thresh,
+    'smooth=i'    => \$smooth,
+    'crop=i'      => \$crop,
+    'opt_th=f'    => \$opt_th,
+    'edge_th=f'   => \$edge_th,
+    'edge_rm=f'   => \$edge_rm,
+    'edge_win=i'  => \$edge_win,
+    'quad_w=i'    => \$quad_width,
+    'quad_h=i'    => \$quad_height,
+    'auto'        => \$do_auto,
+    'auto_all'    => \$do_auto_all,
+    'overwrite'   => \$force_overwrite,
+
+    'debug'       => \$debug,
+    'fft_out:s'   => \$fft_fn,
+    'peaks_out:s' => \$peaks_fn,
+    'diffs_out:s' => \$diff_fn,
+    'rot_out:s'   => \$rot_fn,
+    'vote_out:s'  => \$vote_fn,
+    'theta_out:s' => \$theta_fn,
+
+);
+
+
+# TODO: More validation of inputs here!
+die "Method $method not valid\n"
+    if (! defined $extract_functions{$method});
+
+
+# FIXME: memoize should be restored for repetitive calls
+#memoize('grid2px');
+
+
+# initialize GUI
+$gobjs->{mw} = _build_ui();
+
+
+# handle initial tasks based on input parameters
+_load_files($in_dir) if (defined $in_dir);
+
+# run in batch mode if *.pair filename was given
+if (defined $pair_fn) {
+
+    die "Can't run in batch mode without input directory specified\n"
+        if (! defined $in_dir);
+    auto_all();
+    die "Won't overwrite $pair_fn. Delete and re-run.\n"
+        if (-e $pair_fn && ! $force_overwrite);
+    print_pair(undef,$pair_fn);
+    exit;
+
+}
+
+$do_auto = 0 if ($do_auto_all);
+auto_grid() if ($do_auto);
+auto_all()  if ($do_auto_all);
+
+Gtk2->main;
+
+
+
+
+#----------------------------------------------------------------------------#
+# SUBROUTINES
+#----------------------------------------------------------------------------#
+
+
+sub save_file {
+    test_controls();
+}
+
+sub clean_quit {
+
+    Gtk2->main_quit;
+    return FALSE;
+    
+}
+
+sub _build_ui {
+
+    # set up the main window
+    my $mw = Gtk2::Window->new('toplevel');
+    $mw->set_title("$NAME v$VERSION");
+    $mw->signal_connect('delete_event' => \&clean_quit );
+    $mw->set_default_size(800, 600);
+    $mw->set_default_icon_list($embedded->{B2B_16});
+
+    # add custom icons
+    my $theme = Gtk2::IconTheme->get_default;
+    for (16,22,24) {
+        $theme->add_builtin_icon(
+            "zoomsel", $_, $embedded->{"zoomsel$_"},
+        );
+    }
+
+    # build menubar and toolbar
+    my $vbox_main = _return_framework($mw);
+    
+    # Next we put together the main content
+    $mw->add($vbox_main);
+
+    $mw->show_all();
+    return $mw;
+    
+}
+
+sub _return_framework {
+
+    my $mw = shift;
+
+    my $vbox = Gtk2::VBox->new(FALSE,0);
+    
+    # define menu structure
+    my @menu_actions = (
+        # name         stock id           label
+        [ "FileMenu",  undef,            "_File" ],
+        [ "EditMenu",  undef,            "_Edit" ],
+        [ "ViewMenu",  undef,            "_View" ],
+        [ "HelpMenu",  undef,            "_Help" ],
+        # name         stock id           label          accelerator   tooltip      callback
+        [ "Load_I",   'gtk-open',        "_Load image", "<control>O", "Load image", sub{_load_image()}  ],
+        [ "Load_N",   'gtk-open',        "_Load NDF",    undef,       "Load NDF",   sub{ _load_ndf()}   ],
+        [ "Save",      undef,            "_Save .pair",  undef,       "Save",       \&print_pair        ],
+        [ "Quit",     'gtk-quit',        "_Quit",       "<control>Q", "Quit",       \&clean_quit        ],
+        [ "Grid_M",    undef,            "_Manual grid", undef,       "Manual",     \&manual_grid       ],
+        [ "Grid_A",    undef,            "_Auto grid",   undef,       "Auto",       \&auto_grid         ],
+        [ "Grid_L",    undef,            "_Auto all",    undef,       "Auto All",   \&auto_all          ],
+        [ "About",    'gtk-about',       "_About",       undef,       "About",      \&show_about        ],
+        [ "Prefs",    'gtk-preferences', "_Preferences", undef,       "Prefs",      \&edit_prefs        ],
+        [ "Zoom_In",  'gtk-zoom-in',     "_Zoom in",     undef,       "Zoom in",    sub{zoom(undef,ZI)} ],
+        [ "Zoom_Out", 'gtk-zoom-out',    "_Zoom out",    undef,       "Zoom out",   sub{zoom(undef,ZO)} ],
+        [ "Zoom_100", 'gtk-zoom-100',    "_Zoom 100%",   undef,       "Zoom 100%",  sub{zoom(undef,-1)} ],
+        [ "Zoom_Fit", 'gtk-zoom-fit',    "_Zoom to fit", undef,       "Zoom fit",   sub{zoom(undef,0)}  ],
+    );
+    my @toggle_actions = (
+        [ "Show_Grid", undef,            "_Show grid",      undef,    "Show grid",      \&toggle_grid,      1 ],
+        [ "HL_Used",   undef,            "_Highlight used", undef,    "Highlight used", \&toggle_highlight, 0 ],
+    );
+
+    my $actions = Gtk2::ActionGroup->new( "Actions" );
+    $actions->add_actions( \@menu_actions, undef );
+    $actions->add_toggle_actions( \@toggle_actions, undef );
+
+    my $ui = Gtk2::UIManager->new;
+    $ui->insert_action_group( $actions, 0 );
+    $mw->add_accel_group( $ui->get_accel_group );
+    $ui->add_ui_from_string( $embedded->{ui} );
+    $vbox->pack_start( $ui->get_widget( "/MenuBar" ), FALSE, FALSE, 0 );
+
+    # create toolbar
+    # TODO convert toolbar below to use UIManager
+    my $toolbar = Gtk2::Toolbar->new;
+    $toolbar->set_show_arrow (TRUE);
+
+    my $t_btn_open = Gtk2::ToolButton->new_from_stock('gtk-open');
+    my $t_btn_saveas = Gtk2::ToolButton->new_from_stock('gtk-save');
+    my $t_btn_zoomin = Gtk2::ToolButton->new_from_stock('gtk-zoom-in');
+    my $t_btn_zoomout = Gtk2::ToolButton->new_from_stock('gtk-zoom-out');
+    my $t_btn_zoom100 = Gtk2::ToolButton->new_from_stock('gtk-zoom-100');
+    my $t_btn_zoomfit = Gtk2::ToolButton->new_from_stock('gtk-zoom-fit');
+    my $t_btn_zoomsel = Gtk2::ToggleToolButton->new_from_stock('zoomsel');
+
+    $t_btn_zoomsel->set_active(0);
+    $t_btn_zoomsel->signal_connect('toggled' => sub {
+        $zoom_mode = $t_btn_zoomsel->get_active });
+    $t_btn_zoomsel->set('icon-name' => 'zoomsel');
+    $t_btn_open->signal_connect('clicked' => \&open_file );
+    $t_btn_saveas->signal_connect('clicked' => \&save_file );
+    $t_btn_zoomin->signal_connect('clicked' => \&zoom, ZI );
+    $t_btn_zoomout->signal_connect('clicked' => \&zoom, ZO );
+    $t_btn_zoom100->signal_connect('clicked' => \&zoom, -1 );
+    $t_btn_zoomfit->signal_connect('clicked' => \&zoom, 0 );
+    $toolbar->insert($t_btn_open,-1);
+    $toolbar->insert($t_btn_saveas,-1);
+    $toolbar->insert(Gtk2::SeparatorToolItem->new ,-1 );
+    $toolbar->insert($t_btn_zoomin,-1);
+    $toolbar->insert($t_btn_zoomout,-1);
+    $toolbar->insert($t_btn_zoomfit,-1);
+    $toolbar->insert($t_btn_zoom100,-1);
+    $toolbar->insert($t_btn_zoomsel,-1);
+    my $sep = Gtk2::SeparatorToolItem->new;
+    $sep->set_draw(FALSE);
+    $sep->set_expand(TRUE);
+    $toolbar->insert($sep ,-1 );			
+
+    $vbox->pack_start($toolbar,FALSE,FALSE,0);
+
+
+    # create sidebar
+    my $hbox_main = Gtk2::HBox->new(FALSE,0);
+    my $vbox_info = Gtk2::VBox->new(FALSE,0);
+    $vbox_info->set_size_request(240,-1);
+
+    # img/ndf file buttons
+    my $tbl_files = Gtk2::Table->new(2,2,FALSE);
+    my $f_files = Gtk2::Frame->new();
+    $f_files->set_shadow_type('etched-in');
+    $f_files->set_label('Input files');
+    $f_files->add($tbl_files);
+    my $img_button = Gtk2::FileChooserButton->new('Select array image','open');
+    my $ndf_button = Gtk2::FileChooserButton->new('Select NDF file','open');
+    $gobjs->{img_btn} = $img_button;
+    $gobjs->{ndf_btn} = $ndf_button;
+    $tbl_files->attach(Gtk2::Label->new('image:'),0,1,0,1,'fill','fill',2,2);
+    $tbl_files->attach(Gtk2::Label->new('NDF:'),0,1,1,2,'fill','fill',2,2);
+    $tbl_files->attach($img_button,1,2,0,1,['expand','fill'],'fill',2,2);
+    $tbl_files->attach($ndf_button,1,2,1,2,['expand','fill'],'fill',2,2);
+    $vbox_info->pack_start($f_files,FALSE,FALSE,4);
+
+    # parameter widgets
+    my $tbl_options = Gtk2::Table->new(2,1,FALSE);
+    my $f_options = Gtk2::Frame->new();
+    $f_options->set_shadow_type('etched-in');
+    $f_options->set_label('Extraction options');
+    $f_options->add($tbl_options);
+    $tbl_options->attach(Gtk2::Label->new('Cell Padding:'),0,1,0,1,'fill','fill',2,2);
+    my $pad_button = Gtk2::SpinButton->new_with_range(0,20,1);
+    $pad_button->set_update_policy('GTK_UPDATE_IF_VALID');
+    $pad_button->set_numeric(1);
+    $pad_button->set_value($padding);
+    $pad_button->signal_connect('value-changed' => sub {
+        $padding = $pad_button->get_value();
+        my @pxls;
+        for my $x (0..$quad_width-1) {
+            for my $y (0..$quad_height-1) {
+                push @pxls, get_inside_pixels($quadrants[$curr_quad], $x,$y);
+            }
+        }
+        $quadrants[$curr_quad]->highlight(@pxls);
+        $quadrants[$curr_quad]->update();
+    } );
+    $tbl_options->attach($pad_button,1,2,0,1,['expand','fill'],'fill',2,2);
+    $vbox_info->pack_start($f_options,FALSE,FALSE,4);
+
+    # info widget
+    my $tbl_array_info = Gtk2::Table->new(6,2,FALSE);
+    my $f_array_info   = Gtk2::Frame->new();
+    $f_array_info->set_shadow_type('etched-in');
+    $f_array_info->set_label('Array Info');
+    $f_array_info->add($tbl_array_info);
+
+    my @labels = (
+        'Columns:',
+        'Rows:',
+        'Feature width:',
+        'Feature height:',
+        'Min intensity:',
+        'Max intensity:',
+    );
+    for (0..$#labels) {
+        my $lbl = Gtk2::Label->new($labels[$_]);
+        $lbl->set_alignment(1,0.5);
+        $tbl_array_info->attach(
+            $lbl,
+            0  => 1,
+            $_ => $_+1,
+            'fill', 'fill', 2, 2,
+        );
+    }
+    for (0..$#labels) {
+        my $lbl = Gtk2::Label->new('');
+        $lbl->set_alignment(0,0.5);
+        $tbl_array_info->attach(
+            $lbl,
+            1  => 2,
+            $_ => $_+1,
+            ['expand','fill'], ['expand','fill'], 2, 2,
+        );
+        push @array_info_lbls, $lbl;
+    }
+    $vbox_info->pack_start($f_array_info,FALSE,FALSE,4);
+
+    my $tbl_feat_info = Gtk2::Table->new(6,2,FALSE);
+    my $f_feat_info   = Gtk2::Frame->new();
+    $f_feat_info->set_shadow_type('etched-in');
+    $f_feat_info->set_label('Selected Feature');
+    $f_feat_info->add($tbl_feat_info);
+
+    @labels = (
+        'Column:',
+        'Row:',
+        'Probe ID:',
+        'Probe class:',
+        'Value:',
+    );
+    for (0..$#labels) {
+        my $lbl = Gtk2::Label->new($labels[$_]);
+        $lbl->set_alignment(1,.5);
+        $tbl_feat_info->attach(
+            $lbl,
+            0  => 1,
+            $_ => $_+1,
+            'fill', 'fill', 2, 2,
+        );
+    }
+    for (0..$#labels) {
+        my $lbl = Gtk2::Label->new('');
+        $lbl->set_alignment(0,.5);
+        $tbl_feat_info->attach(
+            $lbl,
+            1  => 2,
+            $_ => $_+1,
+            ['expand','fill'], ['expand','fill'], 2, 2,
+        );
+        push @feature_info_lbls, $lbl;
+    }
+    $vbox_info->pack_start($f_feat_info,FALSE,FALSE,4);
+
+    # load cursors
+    my $arrow = Gtk2::Gdk::Cursor->new('left_ptr');
+    my @cursor_files = qw/ch_w ch_g/;
+    for (@cursor_files) {
+        my $cur_pix = $embedded->{$_};
+        $cursors->{$_} = Gtk2::Gdk::Cursor->new_from_pixbuf(
+            $arrow->get_display, $cur_pix, 8, 8);
+    }
+
+    # setup notebook to hold quadrant canvases
+    my $nb = Gtk2::Notebook->new;
+    $gobjs->{nb} = $nb;
+    $nb->set_tab_pos('GTK_POS_LEFT');
+    $nb->signal_connect('switch-page' => \&_on_page_switch);
+
+    for (1..4) {
+    
+        my $sw = Gtk2::ScrolledWindow->new(undef,undef);
+        $sw->set_shadow_type('in');
+        my $canvas = GridCanvas->new();
+        $quadrants[$_-1] = $canvas;
+        $sw->add_with_viewport($canvas);
+
+        $canvas->{cursor} = $cursors->{ch_g};
+
+        $canvas->signal_connect('enter-notify-event' => sub{
+            $canvas->window->set_cursor($canvas->{cursor})
+        });
+        $canvas->signal_connect('leave-notify-event' => sub{
+            $canvas->window->set_cursor($arrow)
+        });
+        $canvas->signal_connect('button-press-event'   => \&on_click  );
+        $canvas->signal_connect('button-release-event' => \&on_release);
+        $canvas->signal_connect('motion-notify-event'  => \&on_motion );
+
+        my $tablabel = Gtk2::Label->new("Image $_");
+        $tablabel->set_angle(90);
+
+        $nb->append_page($sw,$tablabel);
+
+        $canvas->{rows} = $quad_width;
+        $canvas->{cols} = $quad_height;
+
+    }
+
+    $hbox_main->pack_start($nb,TRUE,TRUE,0);
+    $hbox_main->pack_start($vbox_info,FALSE,FALSE,4);
+    $vbox->pack_start($hbox_main,TRUE,TRUE,0);
+
+    #create statusbar
+    my $status_bar = Gtk2::Statusbar->new;
+    $status_bar->set_size_request(1,20);
+    my $status_context_id = $status_bar->get_context_id('current_status');
+    $status_bar->push($status_context_id,'idle');
+    $gobjs->{status_bar} = $status_bar;
+    $vbox->pack_end($status_bar, FALSE, FALSE, 0);
+
+    $gobjs->{status_bar} = $status_bar;
+
+    $vbox->show_all();
+    $toolbar->set_style('icons');
+    
+    return $vbox;
+    
+}
+
+sub round {
+
+    my ($val,$places) = @_;
+    $places = $places // 0;
+    return (int($val*10**$places+0.5))/10**$places;
+
+}
+
+sub zoom {
+
+    # $sf = -1 : zoom 1:1
+    # $sf =  0 : zoom to window size
+    # $sf >  0 : zoom by $sf
+
+    my ($wid,$sf) = @_;
+
+    my $quad = $quadrants[$curr_quad];
+    my $pdl = $quad->{pdl};
+
+    my $hadj = $gobjs->{nb}->get_nth_page($curr_quad)->get_hadjustment;
+    my $hps = $hadj->page_size;
+    my $vadj = $gobjs->{nb}->get_nth_page($curr_quad)->get_vadjustment;
+    my $vps = $vadj->page_size;
+
+    #if 0 is passed, calculate sf based on window
+    if ($sf == 0) {
+        my ($sel_w,$sel_h) = dims $pdl;
+        my $r_x = $hps / $sel_w;
+        my $r_y = $vps / $sel_h;
+        $sf = $r_x < $r_y ? $r_x : $r_y;
+        $sf /= $quad->{zoom};
+    }
+
+    #if -1 is passed, zoom to 1:1
+    my $mult = $sf == -1 ? 1/$quad->{zoom} : $sf;
+
+    $quad->{man_points} = [ map {$_->[0] *= $mult;$_->[1] *= $mult; $_}
+        @{ $quad->{man_points} } ] if (defined $quad->{man_points});
+    $quad->scale($sf);
+    Gtk2->main_iteration_do(TRUE);
+
+    my $hv = $hadj->get_value;
+    my $h_mid = $hv + $hps/2;
+    my $vv = $vadj->get_value;
+    my $v_mid = $vv + $vps/2;
+
+    my $new_x = int($h_mid * $mult - $hadj->page_size /2);
+    my $new_y = int($v_mid * $mult - $vadj->page_size /2);
+    $new_x = $new_x < $hadj->upper - $hadj->page_size ? $new_x : $hadj->upper - $hadj->page_size;
+    $new_y = $new_y < $vadj->upper - $vadj->page_size ? $new_y : $vadj->upper - $vadj->page_size;
+
+    $hadj->set_value($new_x);
+    $vadj->set_value($new_y);
+
+    Gtk2->main_iteration_do(TRUE);
+
+}
+
+sub median {
+
+    my @sorted = sort {$a <=> $b} @_;
+    my $mid = int(@sorted/2);
+    return $sorted[$mid] if (@sorted%2);
+    return ($sorted[$mid-1] + $sorted[$mid])/2;
+
+}
+
+sub get_bg {
+
+    my ($quad, $x, $y, $sub_ref) = @_;
+    my @background;
+    X:
+    for my $x_shift (-1,0,1) {
+        my $curr_x = $x+$x_shift;
+        next X if ($curr_x < 0);
+        next X if ($curr_x >= $quad->{cols});
+        Y:
+        for my $y_shift (-1,0,1) {
+            my $curr_y = $y+$y_shift;
+            next Y if ($curr_y < 0);
+            next Y if ($curr_y >= $quad->{rows});
+            my ($real_x,$real_y) = grid_to_actual($quad, $curr_x, $curr_y);
+
+            next if (defined $ndf->{data}->[$real_x]->[$real_y]);
+            
+            push @background, &{$sub_ref}( $quad, $curr_x, $curr_y, 0 );
+        }
+    }
+    warn "no background spots used for $x,$y!\n" if (! @background);
+    return @background > 0 ? median(@background) : 0;
+
+}
+
+sub get_value_center {
+
+    my ($quad, $x, $y, $bg_subtract) = @_;
+    my ($a,$b) = $quad->grid2px($x,$y);
+
+    my $pdl = $quad->{pdl};
+    my ($w,$h) = dims $pdl;
+
+    # can't process spots off of image
+    if ($a < 0 || $b < 0 || $a >= $w || $b >= $h) {
+        return 0;
+    }
+
+    my $int = $pdl->at( $a, $b );
+    if ($bg_subtract) {
+        $int -= get_bg($quad, $x, $y, \&get_value_center );
+    }
+    return round($int,0);
+
+}
+
+sub get_value_median {
+
+    my ($quad, $x, $y, $bg_subtract) = @_;
+
+    my $pdl = $quad->{pdl};
+    my ($w,$h) = dims $pdl;
+
+    my @passed = get_inside_pixels($quad, $x, $y);
+    my $c = @passed;
+    return undef if (@passed < 1);
+
+    my @ints;
+    for (@passed) {
+        my ($a,$b) = @{ $_ };
+        next if ($a < 0 || $b < 0 || $a >= $w || $b >= $h);
+        push @ints, $pdl->at( $a, $b );
+    }
+    if (@ints < 1) {
+        warn "no pixels found for $x,$y\n";
+        return undef;
+    }
+
+    my $int = median(@ints);
+
+    if ($bg_subtract) {
+        $int -= get_bg($quad, $x,$y,\&get_value_median );
+    }
+
+    return round($int,0);
+
+}
+
+sub get_value_mean {
+
+    my ($quad, $x, $y, $bg_subtract) = @_;
+
+    my $pdl = $quad->{pdl};
+    my ($w,$h) = dims $pdl;
+
+    my @passed = get_inside_pixels($quad, $x, $y);
+    my $c = @passed;
+    return undef if (@passed < 1);
+
+    my @ints;
+    for (@passed) {
+        my ($a,$b) = @{ $_ };
+        next if ($a < 0 || $b < 0 || $a >= $w || $b >= $h);
+        push @ints, $pdl->at( $a, $b );
+    }
+    if (@ints < 1) {
+        warn "no pixels found for $x,$y\n";
+        return undef;
+    }
+
+    my $int = List::Util::sum(@ints)/@ints;
+
+    if ($bg_subtract) {
+        $int -= get_bg($quad, $x,$y,\&get_value_mean );
+    }
+
+    return round($int,0);
+
+}
+
+sub get_inside_pixels {
+    
+    my ($quad, $x, $y) = @_;
+
+    # fetch grid vertices
+    my ($ul_x, $ul_y) = $quad->grid2px($x-0.5,$y-0.5);
+    my ($ur_x, $ur_y) = $quad->grid2px($x+0.5,$y-0.5);
+    my ($lr_x, $lr_y) = $quad->grid2px($x+0.5,$y+0.5);
+    my ($ll_x, $ll_y) = $quad->grid2px($x-0.5,$y+0.5);
+
+    # calc grid edge slopes
+    # need to deal with divide-by-zero here
+    my $m_top = ($ur_y - $ul_y)/($ur_x - $ul_x);
+    my $m_bot = ($lr_y - $ll_y)/($lr_x - $ll_x);
+    my $m_left  = $ll_x != $ul_x ? ($ll_y - $ul_y)/($ll_x - $ul_x)
+                : undef;
+    my $m_right = $lr_x != $ur_x ? ($lr_y - $ur_y)/($lr_x - $ur_x)
+                : undef;
+
+    # for left/right slopes, change to multiplicative factors
+    # in order to handle vertical lines;
+
+    my $mult_left  = defined $m_left  ? 1/$m_left  : 0;
+    my $mult_right = defined $m_right ? 1/$m_right : 0;
+
+    # determine pixel range to test
+    my $left = List::Util::min($ul_x, $ll_x) + 1;
+    my $right = List::Util::max($ur_x, $lr_x)- 1;
+    my $top = List::Util::min($ul_y, $ur_y) + 1;
+    my $bot = List::Util::max($ll_y, $lr_y) - 1;
+    return () if ($left > $right || $top > $bot);
+
+    # test each pixel
+    # (there is room for optimization here !!!!)
+    my @passed;
+    for my $pix_x (int($left)..int($right)) {
+        my $l_y_u = $ul_y + $m_top*($pix_x   - $ul_x);
+        my $r_y_u = $ul_y + $m_top*($pix_x+1 - $ul_x);
+        my $l_y_l = $ll_y + $m_bot*($pix_x   - $ll_x);
+        my $r_y_l = $ll_y + $m_bot*($pix_x+1 - $ll_x);
+        PIX:
+        for my $pix_y (int($top)..int($bot)) {
+            next PIX if ($l_y_u >= $pix_y-$padding || $r_y_u >= $pix_y-$padding);
+            next PIX if ($l_y_l <= $pix_y+1+$padding || $r_y_l <= $pix_y+1+$padding);
+
+            my $u_x = $ul_x + ($pix_y   - $ul_y)*$mult_left;
+            my $l_x = $ul_x + ($pix_y+1 - $ul_y)*$mult_left;
+            next PIX if ($u_x >= $pix_x-$padding || $l_x >= $pix_x-$padding);
+            $u_x = $ur_x + ($pix_y   - $ur_y)*$mult_right;
+            $l_x = $ur_x + ($pix_y+1 - $ur_y)*$mult_right;
+            next PIX if ($u_x <= $pix_x+1+$padding || $l_x <= $pix_x+1+$padding);
+            push @passed, [$pix_x, $pix_y];
+        }
+    }
+    return @passed;
+}
+
+sub _load_ndf {
+
+    my $file = shift;
+    warn "reading NDF $file...\n" if ($debug);
+    if (! defined $file) {
+        $file = get_filename('select NDF file to load','open');
+    }
+    return if (! defined $file);
+    $gobjs->{ndf_btn}->set_filename($file);
+
+    open my $in, '<', $file;
+    $ndf = {};
+    $ndf->{filename} = basename($file);
+    $ndf->{cols}  = 0;
+    $ndf->{rows} = 0;
+    my $h = <$in>;
+    $h =~ s/[\n\r]+$//;
+    my @col_names = split "\t", $h;
+    while (my $line = <$in>) {
+        $line =~ s/[\n\r]+$//;
+        my @parts = split "\t", $line;
+        push @parts, '' while (@parts < @col_names); # pad end
+        my $ref = {};
+        for (0..$#parts) {
+            $ref->{$col_names[$_]} = $parts[$_];
+        }
+        $ndf->{data}->[$ref->{X}] = [] if (! defined $ndf->{data}->[$ref->{X}]);
+        $ndf->{data}->[$ref->{X}]->[$ref->{Y}] = $ref;
+        $ndf->{cols} = $ref->{X} if ($ref->{X} > $ndf->{cols});
+        $ndf->{rows} = $ref->{Y} if ($ref->{Y} > $ndf->{rows});
+    }
+    $array_info_lbls[0]->set_label($ndf->{cols});
+    $array_info_lbls[1]->set_label($ndf->{rows});
+
+}
+
+sub toggle_grid {
+
+    my ($btn) = @_;
+    for (@quadrants) {
+        $_->set_show_grid( $btn->get_active );
+        $_->update();
+    }
+
+}
+
+sub toggle_highlight {
+
+    my ($btn) = @_;
+    for (@quadrants) {
+        $_->set_show_highlight( $btn->get_active );
+        $_->update();
+    }
+
+}
+
+sub _set_status {
+
+    my $msg = shift;
+    my $id = $gobjs->{status_bar}->get_context_id('current_status');
+    $gobjs->{status_bar}->pop($id);
+    $gobjs->{status_bar}->push($id,$msg);
+    #Gtk2->main_iteration while (Gtk2->events_pending);
+
+}
+
+sub print_pair {
+
+    my ($action,$file) = @_;
+
+    # only output .pair if all grids are defined
+    for (@quadrants) {
+        if (! defined $_->{corners}) {
+            warn "not all quadrants have been gridded\n";
+            return;
+        }
+    }
+
+    # get output filename
+    if (! defined $file) {
+        $file = get_filename('select location to save','save');
+    }
+    return if (! defined $file);
+    warn "saving to $file...\n" if ($debug);
+
+    open my $out, '>', $file;
+    my @image_fns = map { $_->{filename} } @quadrants;
+    my $img_path = join "|", @image_fns;
+    my $date = localtime()->datetime;
+    my $auto_count;
+    my $manual_count;
+    for (@quadrants) {
+        ++$auto_count   if ($_->{grid_method} eq 'auto');
+        ++$manual_count if ($_->{grid_method} eq 'manual');
+    }
+    my $is_auto = $auto_count == 4 ? 'yes' : $manual_count == 4 ? 'no' : 'mixed';
+    my $design = $ndf->{filename};
+    $design =~ s/\.ndf$//i;
+    print {$out} "# software=$NAME version=$VERSION"
+        . " imagefile=$img_path designfile=$ndf->{filename} designname=$design"
+        . " designid=$design date=$date border=$padding";
+    for (0..$#quadrants) {
+        my $quad = $quadrants[$_];
+        print {$out} " ul_x$_=$quad->{corners}->[0]->[0]";
+        print {$out} " ul_y$_=$quad->{corners}->[0]->[1]";
+        print {$out} " ur_x$_=$quad->{corners}->[1]->[0]";
+        print {$out} " ur_y$_=$quad->{corners}->[1]->[1]";
+        print {$out} " lr_x$_=$quad->{corners}->[2]->[0]";
+        print {$out} " lr_y$_=$quad->{corners}->[2]->[1]";
+        print {$out} " ll_x$_=$quad->{corners}->[3]->[0]";
+        print {$out} " ll_y$_=$quad->{corners}->[3]->[1]";
+    }
+    print {$out} " qcscore=0 locallyaligned=no CorrectAstig=no Knots= auto=$is_auto method=$method\n";
+#
+    print {$out} join( "\t", qw/
+        IMAGE_ID
+        GENE_EXPR_OPTION
+        SEQ_ID
+        PROBE_ID
+        POSITION
+        X
+        Y
+        MATCH_INDEX
+        PM
+        MM
+    /), "\n";
+    for my $col (1..$ndf->{cols}) {
+        ROW:
+        for my $row (1..$ndf->{rows}) {
+            if (defined $ndf->{data}->[$col]->[$row]) {
+                my $spot = $ndf->{data}->[$col]->[$row];
+                my $probe_id = $spot->{PROBE_ID};
+                if (! defined $probe_id) {
+                    warn "missing ID at $col, $row\n";
+                    next ROW;
+                }
+                my $seq_id    = $spot->{SEQ_ID}   // '';
+                my $pos       = $spot->{POSITION} // '';
+                my $match_idx = $spot->{MATCH_INDEX};
+                my ($quad, $p_col, $p_row) = actual_to_grid($col-1,$row-1);
+                if (! defined $quad) {
+                    warn "failed to convert value. Returning...\n";
+                    return 0;
+                }
+
+                # skipped masked spots
+                next ROW if ($quad->is_masked( [$p_col,$p_row] ));
+                
+                my $int = &{$extract_functions{$method}}($quad, $p_col, $p_row, $bg_rm);
+                next ROW if (! defined $int);
+
+                my $img_id = $quad->{filename};
+                $img_id =~ s/\.[^\.]+$//;
+
+                print {$out} join( "\t", (
+                    $img_id,
+                    'WHOLE ARRAY',
+                    $seq_id,
+                    $probe_id,
+                    $pos,
+                    $col,
+                    $row,
+                    $match_idx,
+                    $int,
+                    0
+                )), "\n";
+            }
+        }
+    }
+
+}
+
+sub _load_files {
+
+    my $dir = shift;
+
+    # get directory name if necessary
+    if (! defined $dir) {
+        $dir = get_filename('select project directory to load','select-folder');
+    }
+    return if (! defined $dir);
+    if (! -d $dir) {
+        warn "Bad directory name\n";
+        return;
+    }
+
+    $gobjs->{img_btn}->set_filename($dir);
+
+    # read in file names
+    opendir HERE, $dir;
+    my @files = readdir(HERE);
+    closedir HERE;
+    my @images = grep { $_ =~ /\.tiff?$/i } @files;
+    my @ndf    = grep { $_ =~ /\.ndf$/i   } @files;
+    if (@images != 4 || @ndf != 1) {
+        warn "Wrong number of image or NDF files in directory\n";
+        return;
+    }
+
+    # load NDF
+    my $ndf_fn = "$dir/$ndf[0]";
+    _load_ndf($ndf_fn);
+
+    # load images
+    @images = map {$dir . '/' . $_} @images;
+    warn "loading images...\n" if ($debug);
+
+    for my $i (0..$#images) {
+
+        my $file = $images[$i];
+
+        $quadrants[$i]->{filename} = basename($file);
+
+        my $pb = Gtk2::Gdk::Pixbuf->new_from_file($file);
+        $quadrants[$i]->set_pixbuf($pb);
+
+        # TODO: remove dependency on Imager to get bit depth ??
+        my $i2 = Imager->new(bits => 16);
+        $i2->open(file => $file);
+        $quadrants[$i]->{bits} = $i2->bits();
+
+        # TODO: fix this to be image-specific
+        $curr_bits = $i2->bits();
+
+        # It used to be necessary to convert to FITS to preserve the
+        # correct intensity values (other methods mangle values).
+        # Now seems to work okay, but keep commented code for reference
+        #my ($fh, $fn) = tempfile( SUFFIX => '.fits' ); 
+        #my $cmd = "imagej -b $FindBin::Bin/img2fits.ijm $file $fn 2> /dev/null > /dev/null";
+        #system($cmd)
+            #or die "problem converting image to FITS";
+        #my $pdl = rfits($fn)->ushort();
+        #unlink $fn;
+        my $pdl = rpic($file)->ushort();
+
+        my @dims = dims $pdl ;
+        if (@dims > 2) {
+            warn "found multiple channels. Only using first channel\n" if ($debug);
+            $pdl = $pdl((0));
+            @dims = dims $pdl;
+        }
+        ##image origin in PDL is at lower-left of image!!!
+        ## here we flip to to correspond with expected behavior
+        $pdl = $pdl(:,-1:0); #flip image
+        $quadrants[$i]->{pdl} = $pdl;
+    }
+
+}
+
+sub _on_page_switch {
+
+    my($book,$p,$index) = @_; 
+    $curr_quad = $index;
+    my $pdl = $quadrants[$index]->{pdl};
+    return if (! defined $pdl);
+    if (defined $quadrants[$index]->{feat_w}) {
+        $array_info_lbls[2]->set_label( $quadrants[$index]->{feat_w} );
+        $array_info_lbls[3]->set_label( $quadrants[$index]->{feat_h} );
+    }
+    $array_info_lbls[4]->set_label(min $pdl);
+    $array_info_lbls[5]->set_label(max $pdl);
+
+}
+
+sub show_about {
+
+    my $dialog = Gtk2::AboutDialog->new;
+    $dialog->set_program_name( $NAME );
+    $dialog->set_version( $VERSION );
+    $dialog->set_copyright( chr(169) . ' $YEAR Jeremy Volkening' );
+    $dialog->set_comments('gRidderM is a software tool for extracting raw'
+        . ' probe intensities from a set of four millichip images');
+    $dialog->set_authors('Jeremy Volkening');
+    $dialog->set_wrap_license(TRUE);
+    $dialog->set_license(
+        "$NAME is free software: you can redistribute it and/or modify" .
+        ' it under the terms of the GNU General Public License as published' .
+        ' by the Free Software Foundation, either version 2 of the License,' .
+        " or (at your option) any later version.\n\n" .
+
+        "$NAME is distributed in the hope that it will be useful, " .
+        'but WITHOUT ANY WARRANTY; without even the implied warranty of ' .
+        'MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the ' .
+        "GNU General Public License for more details.\n\n" .
+
+        'You should have received a copy of the GNU General Public License ' .
+        'along with this program.  If not, see http://www.gnu.org/licenses/.'
+    );
+    $dialog->set_logo( $embedded->{chip} );
+    $dialog->run;
+    $dialog->destroy;
+    return 0;
+
+}
+
+sub get_embedded {
+
+    my $embedded = {};
+
+    my %encoded = (
+        B2B_16      => $MAS::Embed::icon_B2B_16,
+        ch_w        => $MAS::Embed::icon_ch_white,
+        ch_g        => $MAS::Embed::icon_ch_green,
+        chip        => $MAS::Embed::icon_chip_128,
+        zoomsel16   => $MAS::Embed::icon_zoomsel_16,
+        zoomsel22   => $MAS::Embed::icon_zoomsel_22,
+        zoomsel24   => $MAS::Embed::icon_zoomsel_24,
+    );
+    my %unencoded = (
+        ui          => $MAS::Embed::ui,
+    );
+
+    for (keys %encoded) {
+        $embedded->{$_} = do {
+            my $loader = Gtk2::Gdk::PixbufLoader->new();
+            $loader->write( decode_base64( $encoded{$_} ) );
+            $loader->close;
+            $loader->get_pixbuf();
+        };
+    }
+    for (keys %unencoded) {
+        $embedded->{$_} = $unencoded{$_};
+    }
+    return $embedded;
+
+}
+
+sub get_filename {
+
+    my ( $heading, $type,) = @_;
+
+    my $file_chooser =  Gtk2::FileChooserDialog->new( 
+        $heading,
+        $gobjs->{mw},
+        $type,
+        'gtk-cancel' => 'cancel',
+        'gtk-ok' => 'ok'
+    );
+
+    # since we are auto-adding the correct suffix if missing, we need to
+    # manually handle the overwrite confirmation and check the filename
+    # with suffix added as well
+    if ($type eq 'save') {
+        $file_chooser->set_do_overwrite_confirmation(TRUE);
+    }
+
+    my $filename;
+    if ('ok' eq $file_chooser->run){    
+        $filename = $file_chooser->get_filename;
+        # automatic overwrite confirmation doesn't work when we add a suffix
+        # aftwards like this, so the feature is currently disabled
+        # TODO: implement custom overwrite confirmation dialog to fix this
+        #if ($type eq 'save' && $filename !~ /\.pair$/i) {
+            #$filename .= '.pair';
+        #}
+    }
+    $file_chooser->destroy;
+    return $filename;
+
+}
+
+sub on_click {
+
+    my ($quad,$ev) = @_;
+    my ($x,$y) = ( $ev->x, $ev->y );
+
+    # handle left mouse button
+    if ($ev->button == 1) {
+
+        # handle zoom mode
+        if ($zoom_mode) {
+            $quad->{drag_x} = $x;
+            $quad->{drag_y} = $y;
+            $quad->{dragging} = TRUE;
+        }
+
+        # handle manual grid mode
+        elsif ($quad->{man_grid}) {
+
+            my @man_points = ();
+            push @man_points, @{ $quad->{man_points} }
+                if (defined $quad->{man_points});
+            pop @man_points if (@man_points);
+            push @man_points, [$x,$y];
+
+            # if enough points are selected, finalize grid
+            if (@man_points == 3) {
+
+                $quad->{man_grid}    = 0;
+                $quad->{man_points}  = undef;
+                $quad->{grid_method} = 'manual';
+
+                my @corners = $quad->man_to_rect([@man_points]);
+
+                #rotate corners so that upper-left is first
+                while ($corners[0]->[0] > $corners[1]->[0]
+                    || $corners[0]->[0] > $corners[2]->[0]
+                    || $corners[3]->[0] > $corners[1]->[0]
+                    || $corners[3]->[0] > $corners[2]->[0]
+                ) {
+                    
+                    unshift @corners, pop @corners; 
+
+                }
+                if ($corners[0]->[1] > $corners[3]->[1]) {
+                    @corners = reverse @corners;
+                }
+
+                $quad->{corners} = [@corners];
+
+                my $max_sum = [0,0];
+                my @sums = find_fid($quad);
+                for (0..$#sums) {
+                    $max_sum = [$_,$sums[$_]] if ($sums[$_] > $max_sum->[1]);
+                }
+                $quad->{anchor_pos} = $max_sum->[0];
+                $quad->{anchor_score} = $max_sum->[1];
+
+                my $calc_dim = sqrt(($corners[1]->[0] - $corners[0]->[0])**2
+                    + ($corners[1]->[1] - $corners[0]->[1])**2)/($quad->{rows}-1);
+
+                my @new = optimize_corners(
+                    $calc_dim,
+                    $calc_dim,
+                    [@corners],
+                    $quad->{pdl},
+                    ($max_sum->[0]+2)%4
+                );
+
+                $quad->{corners} = [@new];
+                finish_grid( $quad );
+
+                return TRUE;
+
+            }
+            push @man_points, [$x,$y];
+            $quad->{man_points} = [@man_points];
+        }
+            
+        # handle spot selection
+        elsif (defined $quad->{position}) {
+
+            my $nearest_spot = $quad->px2grid($x,$y);
+            return TRUE if (! defined $nearest_spot);
+
+            my $is_set = $quad->sel_spot($nearest_spot);
+            if ($is_set) {
+                my ($col,$row) = map {$_+1} grid_to_actual(
+                    $quad,
+                    $nearest_spot->[0],
+                    $nearest_spot->[1],
+                );
+                my $ref = $ndf->{data}->[$col]->[$row];
+                $feature_info_lbls[0]->set_label($col);
+                $feature_info_lbls[1]->set_label($row);
+                my $int = get_value_center($quad, @{ $nearest_spot },0);
+                $feature_info_lbls[4]->set_label($int);
+                if (defined $ref) {
+                    $feature_info_lbls[2]->set_label($ref->{PROBE_ID});
+                    $feature_info_lbls[3]->set_label($ref->{PROBE_CLASS});
+                }
+                else {
+                    $feature_info_lbls[2]->set_label('[EMPTY]');
+                    $feature_info_lbls[3]->set_label('');
+                }
+            }
+            else {
+                $feature_info_lbls[0]->set_label('');
+                $feature_info_lbls[1]->set_label('');
+                $feature_info_lbls[2]->set_label('');
+                $feature_info_lbls[3]->set_label('');
+                $feature_info_lbls[4]->set_label('');
+            }
+        }
+    }
+
+    # handle right mouse button
+    elsif ($ev->button == 3 && defined $quad->{corners}) {
+        my $nearest_spot = $quad->px2grid($x,$y);
+        return TRUE if (! defined $nearest_spot);
+        $quad->toggle_mask($nearest_spot);
+    }
+
+    return TRUE;
+
+}
+
+sub actual_to_grid {
+    
+    my ($col,$row) = @_;
+
+    my $w = $quad_width;
+    my $h = $quad_height;
+    ($w,$h) = ($h,$w) if ($chip_rotation%2); #flip starting w,h if odd rotations
+
+    #coords are zero-based here
+
+    # account for image quadrant
+    my $quadrant;
+    if ($col > 35) {
+        $quadrant = $row > 35 ? 2 : 1;
+    }
+    else {
+        $quadrant = $row > 35 ? 3 : 0;
+    }
+    if ($quadrant%3) { # correct col for 1,2 
+        $col -= $ndf->{cols} - 38;
+    }
+    if ($quadrant > 1) { # correct row for 2,3
+        $row -= $ndf->{cols} - 38;
+    }
+
+    # account for overall chip rotation
+    for (1..$chip_rotation) {
+        my $old_row = $row;
+        $row = $h - $col - 1;
+        $col = $old_row;
+        ($w,$h) = ($h,$w);
+    }
+    
+    for (@quadrants) {
+
+        return ($_, $col, $row)
+            if ($_->{position} == $quadrant);
+
+    }
+    warn "converting actual to grid FAILED!\n";
+    return undef;
+
+}
+
+sub grid_to_actual {
+
+    my ($quad, $col, $row) = @_;
+
+    my $w = $quad->{cols};
+    my $h = $quad->{rows};
+    ($w,$h) = ($h,$w) if ($chip_rotation%2); #flip starting w,h if odd rotations
+
+    # account for overall chip rotation
+    for (1..$chip_rotation) {
+        my $old_col = $col;
+        $col = $h - $row - 1;
+        $row = $old_col;
+        ($w,$h) = ($h,$w);
+    }
+
+    # account for image quadrant
+    my $position = $quad->{position};
+    if ($position%3) { # correct col for 1,2 
+        $col = $ndf->{cols} - $w + $col;
+    }
+    if ($position > 1) { # correct row for 2,3
+        $row = $ndf->{cols} - $h + $row;
+    }
+
+    return ($col,$row);
+
+}
+
+sub on_motion {
+
+    my ($quad, $ev) = @_;
+    my $curr_x = $ev->x;
+    my $curr_y = $ev->y;
+
+    # handle zoom mode
+    if ($zoom_mode && $quad->{dragging} && $ev->state >= 'button1-mask' ) {
+        my $orig_x = $quad->{drag_x};
+        my $orig_y = $quad->{drag_y};
+        my $x1 = $curr_x < $orig_x ? $curr_x : $orig_x;
+        my $x2 = $curr_x < $orig_x ? $orig_x : $curr_x;
+        my $y1 = $curr_y < $orig_y ? $curr_y : $orig_y;
+        my $y2 = $curr_y < $orig_y ? $orig_y : $curr_y;
+        $quad->set_selbox( $x1, $y1, $x2, $y2 );
+
+    }
+
+    # handle manual grid mode
+    elsif ($quad->{man_grid} && defined $quad->{man_points}) {
+        $quad->{man_points}->[-1] = [$curr_x, $curr_y];
+        $quad->update();
+    }
+    elsif (defined $quad->{corners}) {
+        my $nearest_spot = $quad->px2grid($ev->x,$ev->y);
+        return TRUE if (! defined $nearest_spot);
+        my $col = $nearest_spot->[0] + 1;
+        my $row = $nearest_spot->[1] + 1;
+        if (! defined $quad->{last_x} || ! defined $quad->{last_y}
+          || $col !=$quad->{last_x} || $row != $quad->{last_y}) {
+            my $int = get_value_center($quad, @{ $nearest_spot },0);
+            _set_status( "($col,$row) Int: $int" );
+            $quad->{last_x} = $col;
+            $quad->{last_y} = $row;
+        }
+    }
+    return TRUE;
+}
+
+sub on_release {
+
+    my ($quad,$ev) = @_;
+    if (defined $quad->{dragging} && $quad->{dragging} == TRUE) {
+        if ($zoom_mode) {
+            $quad->{dragging} = FALSE;
+            $quad->set_selbox(undef);
+            my $curr_x = $ev->x;
+            my $curr_y = $ev->y;
+            my $orig_x = $quad->{drag_x};
+            my $orig_y = $quad->{drag_y};
+            my $x1 = $curr_x < $orig_x ? $curr_x : $orig_x;
+            my $x2 = $curr_x < $orig_x ? $orig_x : $curr_x;
+            my $y1 = $curr_y < $orig_y ? $curr_y : $orig_y;
+            my $y2 = $curr_y < $orig_y ? $orig_y : $curr_y;
+            my $sel_w = $x2 - $x1;
+            my $sel_h = $y2 - $y1;
+            if ($sel_w == 0 || $sel_h == 0) {
+                $quad->update();
+                return TRUE;
+            }
+            my $hadj = $gobjs->{nb}->get_nth_page($curr_quad)->get_hadjustment;
+            my $hps = $hadj->page_size;
+            my $vadj = $gobjs->{nb}->get_nth_page($curr_quad)->get_vadjustment;
+            my $vps = $vadj->page_size;
+            my $r_x = $hps / $sel_w;
+            my $r_y = $vps / $sel_h;
+            my $scale_by = $r_x < $r_y ? $r_x : $r_y;
+            my $upper_x = $hadj->upper;
+            my $upper_y = $vadj->upper;
+            zoom($quad,$scale_by);
+            my $new_x = $x1/$upper_x * $hadj->upper;
+            my $new_y = $y1/$upper_y * $vadj->upper;
+            $new_y -= ($vps-$sel_h*$scale_by)/2 if ($r_y > $r_x);
+            $new_x -= ($hps-$sel_w*$scale_by)/2 if ($r_y < $r_x);
+            $hadj->set_value($new_x);
+            $vadj->set_value($new_y);
+        }
+
+    }
+    return TRUE;
+
+}
+
+sub manual_grid {
+
+    my $quad = $quadrants[$curr_quad];
+    $quad->{corners} = undef;
+    $quad->{man_grid} = 1;
+    $quad->update();
+
+}
+
+sub process_accumulator {
+
+    # determine optimal rotation from Hough accumulator hash (might be further
+    # optimized)
+    my $acc = shift;
+    my @sorted = sort {$acc->{$b} <=> $acc->{$a}} keys %{$acc};
+
+    my %squared = ();
+    for (@sorted) {
+        my ($r,$theta) = split ':', $_;
+        my $count = $acc->{$_};
+        $squared{$theta} += $count**2;
+    }
+    if (defined $theta_fn) {
+        my @s2 = sort {$a <=> $b} keys %squared;
+        open my $out, '>', $theta_fn;
+        print {$out} "$_\t$squared{$_}\n" for (@s2);
+    }
+    @sorted = sort {$squared{$b} <=> $squared{$a}} keys %squared;
+    return $sorted[0];
+
+}
+
+sub auto_all {
+
+    auto_grid(undef, $_) for (@quadrants);
+
+}
+
+sub auto_grid {
+
+    my ($wid, $quad)= @_;
+    $quad = $quadrants[$curr_quad] if (! defined $quad);
+
+    # set "working" cursor
+    my $prev_cursor = $gobjs->{mw}->get_window->get_cursor();
+    $gobjs->{mw}->get_window->set_cursor(Gtk2::Gdk::Cursor->new('watch'));
+    Gtk2->main_iteration while (Gtk2->events_pending);
+
+    # remember initial midpoints for rotation
+    my $pdl = $quad->{pdl};
+    my ($w,$h) = dims $pdl;
+    my $old_x_mp = $w/2;
+    my $old_y_mp = $h/2;
+
+    my $pdl_mod = $pdl->copy;
+
+    # downsample to 8-bit gray (if necessary)
+    $curr_bits = $quad->{bits};
+    if ($curr_bits > 8) {
+        warn "downsampling to 8-bit image\n" if ($debug);
+        $pdl_mod = $pdl_mod >> ($curr_bits - 8);
+        $curr_bits = 8;
+    }
+
+    # set intensity bounds and do linear stretch
+    my $max_int = PDL::Ufunc::pct $pdl_mod, $upper;
+    my $min_int = PDL::Ufunc::pct $pdl_mod, $lower;
+    warn "MIN: $min_int\nMAX: $max_int\n" if ($debug);
+    $pdl_mod = ((float $pdl_mod) -$min_int)*(2**$curr_bits-1)/($max_int-$min_int);
+    $pdl_mod->where($pdl_mod < 0) .= 0;
+    $pdl_mod->where($pdl_mod > 2**$curr_bits-1) .= 2**$curr_bits-1;
+
+    my $angle = find_rotation($pdl_mod);
+
+    warn "performing image rotation...\n" if ($debug);
+    $pdl_mod = $pdl_mod->rot2d(-$angle,0,1);
+
+    $pdl_mod->wpic($rot_fn) if (defined $rot_fn);
+
+    ($w,$h) = dims $pdl_mod;
+
+    my $th = $pdl_mod > $edge_th*(2**$curr_bits-1);
+    $th = $th * 255;
+    $th = $th / 255;
+
+    my ($left,$right) = find_edges($th);
+    $th = $th->xchg(1,0);
+    my ($top, $bottom) = find_edges($th);
+    $th = $th->xchg(1,0);
+
+    warn "bounds:\n\ttop:$top->[0] $top->[1]\n\tbot:$bottom->[0] $bottom->[1]\n\tleft:$left->[0] $left->[1]\n\tright:$right->[0] $right->[1]\n\n" if ($debug);
+
+    my $calc_w = find_spacing($pdl_mod);
+    $pdl_mod = $pdl_mod->xchg(1,0);
+    my $calc_h = find_spacing($pdl_mod);
+    $pdl_mod = $pdl_mod->xchg(1,0);
+
+    # remember so values can be displayed on page switch
+    $quad->{feat_w} = round($calc_w,2);
+    $quad->{feat_h} = round($calc_h,2);
+
+    # TODO: it is possible (even probable) during an auto_all() call that the
+    # values updated here do not correspond to the image displayed. Not really
+    # a big deal, and the correct values are updated at next page switch, but
+    # this should be fixed eventually.
+    $array_info_lbls[2]->set_label( $quad->{feat_w} );
+    $array_info_lbls[3]->set_label( $quad->{feat_h} );
+
+    warn "calculated width: $calc_w\n" if ($debug);
+    warn "calculated height: $calc_h\n" if ($debug);
+
+
+    #midpoints
+    my $x5 = $left->[0]+$calc_w/2;
+    my $y5 = $top->[0]+$calc_h/2;
+    my $x6 = $right->[0]-$calc_w/2;
+    my $y6 = $bottom->[0]-$calc_h/2;
+
+    my $x_mp = $w/2;
+    my $y_mp = $h/2;
+
+    my @rotated;
+
+    my $x_shift = $old_x_mp - $x_mp;
+    my $y_shift = $old_y_mp - $y_mp;
+
+    warn "de-rotating identified corners...\n" if ($debug);
+    my @new = ([$x5,$y5],[$x6,$y5],[$x6,$y6],[$x5,$y6]);
+    for my $pt (@new) {
+        my ($x,$y) = @{ $pt };
+        my $h = sqrt(($y_mp-$y)**2 + ($x_mp-$x)**2);
+        my $theta = atan(($y_mp-$y)/($x_mp-$x)) - deg2rad($angle);
+        my $sign = $x>$x_mp ? -1 : 1;
+        my $y2 = $y_mp - sin($theta)*$h*$sign + $y_shift;
+        my $x2 = $x_mp - cos($theta)*$h*$sign + $x_shift;
+        push @rotated, [$x2,$y2];
+    }
+
+    # determine "best" corner to choose grid anchor point
+
+    my $edge_len = ($quad->{cols}-1) * $calc_w;
+    my $theta = deg2rad($angle);
+    my $dx = cos($theta) * $edge_len;
+    my $dy = sin($theta) * $edge_len;
+    my $max_sum = [0,0];
+    my @proposed;
+    for my $c (0..3) {
+        my @new;
+        $new[$c] = $rotated[$c];
+        for (1..3) {
+            my $next = $c == 0 ? [ $new[$c]->[0]+$dx, $new[$c]->[1]-$dy ]
+                     : $c == 1 ? [ $new[$c]->[0]+$dy, $new[$c]->[1]+$dx ]
+                     : $c == 2 ? [ $new[$c]->[0]-$dx, $new[$c]->[1]+$dy ]
+                     : $c == 3 ? [ $new[$c]->[0]-$dy, $new[$c]->[1]-$dx ]
+                     : undef;
+            $c = ($c+1)%4;
+            $new[$c] = $next;
+        }
+        $c = ($c+1)%4; # reset to starting point
+        @new = optimize_corners(
+            $calc_w,
+            $calc_h,
+            [@new],
+            $quad->{pdl},
+            ($c+2)%4
+        );
+        $quad->{corners} = [@new];
+        my @sums = find_fid($quad);
+        for (0..$#sums) {
+            $max_sum = [$_,$sums[$_]] if ($sums[$_] > $max_sum->[1]);
+        }
+        $proposed[$c] = [@new];
+        
+    }
+    my $best = $max_sum->[0];
+    $quad->{anchor_pos}   = $max_sum->[0];
+    $quad->{anchor_score} = $max_sum->[1];
+    $quad->{corners}      = $proposed[$best];
+    $quad->{grid_method}  = 'auto';
+
+    finish_grid($quad);
+
+    $gobjs->{mw}->get_window->set_cursor($prev_cursor);
+    Gtk2->main_iteration_do(TRUE);
+
+}
+
+sub finish_grid {
+
+    my ( $quad ) = @_;
+
+    # calculate extracted pixels and update Canvas overlay
+    my @pxls;
+    for my $x (0..$quad->{cols}-1) {
+        for my $y (0..$quad->{rows}-1) {
+            push @pxls, get_inside_pixels( $quad, $x, $y );
+        }
+    }
+    $quad->highlight(@pxls);
+    $quad->update();
+
+    # when all images are gridded, calculate positions, etc
+    my @best;
+    for (@quadrants) {
+        push @best, $_->{anchor_pos} if (defined $_->{anchor_pos});
+    }
+    if (@best == 4) {
+
+        my $count = uniq @best;
+        if ($count != 4) {
+            warn "not all anchors are unique!!\n";
+            return;
+        }
+
+        # find corner with best overall fiducial score
+        my $upper_left = $quadrants[0];
+        for (@quadrants) {
+            $upper_left = $_ if ( $_->{anchor_score}
+                > $upper_left->{anchor_score} );
+        }
+
+        # corner of upper-left image should be at 0, so difference from zero gives
+        # rotation of images
+        $chip_rotation = (4 - $upper_left->{anchor_pos})%4;
+        
+        for (@quadrants) {
+            $_->{position} = ($_->{anchor_pos} + $chip_rotation)%4;
+        }
+        if ($debug) {
+            warn "Rotation: $chip_rotation\n";
+            warn "quad $_: $quadrants[$_]->{position}\n" for (0..3);
+        }
+
+    }
+
+}
+
+sub optimize_corners {
+
+    my ($w,$h,$corn_ptr,$pdl,$skip) = @_;
+
+    my @used;
+    $used[0] = defined $ndf->{data}->[1]->[1] ? 1 : 0;
+    $used[1] = defined $ndf->{data}->[$quad_width]->[1] ? 1 : 0;
+    $used[2] = defined $ndf->{data}->[$quad_width]->[$quad_height] ? 1 : 0;
+    $used[3] = defined $ndf->{data}->[1]->[$quad_height] ? 1 : 0;
+
+    # set intensity bounds and do linear stretch
+    my $pdl_mod = $pdl->copy;
+    my $max_int = PDL::Ufunc::pct $pdl_mod, $upper;
+    my $min_int = PDL::Ufunc::pct $pdl_mod, $lower;
+    $pdl_mod = ((float $pdl_mod) -$min_int)*(2**$curr_bits-1)/($max_int-$min_int);
+    $pdl_mod->where($pdl_mod < 0) .= 0;
+    $pdl_mod->where($pdl_mod > 2**$curr_bits-1) .= 2**$curr_bits-1;
+
+    my ($img_w, $img_h) = dims $pdl_mod;
+    ($w,$h) = map {round($_)} ($w,$h);
+    my $shift_x = round($w/2);
+    my $shift_y = round($h/2);
+    my @corners = @{ $corn_ptr};
+    CORNER:
+    for (0..$#corners) {
+
+        next CORNER if (defined $skip && $_ == $skip);
+        
+        my $pt = $corners[$_];
+        my ($x,$y);
+        $x = round($pt->[0]) if ($w%2 == 0); #even
+        $x = round($pt->[0]+.5)-.5 if ($w%2 != 0); #odd
+        $y = round($pt->[1]) if ($h%2 == 0); #even
+        $y = round($pt->[1]+.5)-.5 if ($h%2 != 0); #odd
+        if ($x < 0 || $y < 0 || $x >= $img_w || $y >= $img_h) {
+            warn "point ($x,$y) outside image, not optimizing\n" if ($debug);
+            next CORNER;
+        }
+        my $x_test = $x - $shift_x;
+        my %sums;
+        XTEST:
+        while ($x_test <= $x+$shift_x) {
+            if ($x_test < 0 || $x_test >= $img_w) {
+                ++$x_test;
+                next XTEST;
+            }
+            my $y_test = $y - $shift_y;
+            YTEST:
+            while ($y_test <= $y+$shift_y) {
+                if ($y_test < 0 || $y_test >= $img_h) {
+                    ++$y_test;
+                    next YTEST;
+                }
+                my $sum = 0;
+                my $x1 = $x_test-$w/2;
+                XPOINT:
+                while ($x1 < $x_test+$w/2) {
+                    if ($x1 < 0 || $x1 >= $img_w) {
+                        ++$x1;
+                        next XPOINT;
+                    }
+                    my $y1 = $y_test-$h/2;
+                    YPOINT:
+                    while ($y1 < $y_test+$h/2) {
+                        if ($y1 < 0 || $y1 >= $img_h) {
+                            ++$y1;
+                            next YPOINT;
+                        }
+                        my $int = $pdl_mod->at($x1,$y1);
+                        $sum += $int;
+                        ++$y1;
+                    }
+                    ++$x1;
+                }
+                $sums{$sum} = [$x_test,$y_test];
+                ++$y_test;
+            }
+            ++$x_test;
+        }
+        my @ordered = sort {$b <=> $a} keys %sums;
+        my $best_point = $used[$_] ? $sums{ $ordered[0] } : $sums{ $ordered[-1] };
+        if ($used[$_] && $ordered[0]/($w*$h) < $opt_th*(2**$curr_bits-1)) {
+            warn "optimal sum for ($x,$y) below threshold, not optimizing\n" if ($debug);
+            next CORNER;
+        }
+        $corners[$_] = $best_point;
+    }
+    if (defined $skip) {
+        my $opp  = ($skip+2)%4; 
+        my $next = ($opp+1)%4;
+        my $prev = ($opp-1)%4;
+        my $x_shift = $corners[$next]->[0] - $corners[$opp]->[0];
+        my $y_shift = $corners[$next]->[1] - $corners[$opp]->[1];
+        $corners[$skip] = [
+            $corners[$prev]->[0] + $x_shift,
+            $corners[$prev]->[1] + $y_shift,
+        ];
+    }
+    return @corners;
+
+}
+
+sub bin {
+
+    my ($val,$binsize) = @_;
+    $val *= 10;
+    $binsize *= 10;
+    my $i = int($val);
+    return ($i + $binsize - $i%$binsize)/10;
+
+}
+
+sub find_edges {
+
+    my ($th) = @_;
+    my ($w,$h) = dims $th;
+    my $h_trim = int($h*$edge_rm);
+    my @colsums;
+    for (0..$w-1) {
+        my $col = $th(($_),:);
+        my $sum = sum $col - $h_trim;
+        $sum = $sum < 0 ? 0 : $sum;
+        push @colsums, $sum;
+    }
+    my @diffs;
+    COL:
+    for (1..$w-1) {
+        
+        my $left_start = $_ - $edge_win >= 0 ? $_ - $edge_win : 0;
+        my $left_total = List::Util::sum(@colsums[$left_start..$_-1]);
+        my $right_start = $_ + $edge_win-1 <= $w-1 ? $_ + $edge_win-1 : $w-1;
+        my $right_total = List::Util::sum(@colsums[$_..$right_start]);
+        my $l_count = $_ - $left_start;
+        my $r_count = $right_start - $_ + 1;
+        my $l_mean = $left_total / $l_count;
+        my $r_mean = $right_total / $r_count;
+        my $diff = $l_mean - $r_mean;
+        push @diffs, [$_,$diff];
+
+    }
+    my $mid = int($#diffs/2);
+    my @lefts  = sort {$a->[1] <=> $b->[1]} @diffs[$crop..$mid];
+    my @rights = sort {$b->[1] <=> $a->[1]} @diffs[$mid+1..$#diffs];
+    my $left   = $lefts[0];
+    my $right  = $rights[0];
+    if (defined $diff_fn) {
+        open my $out, '>', $diff_fn;
+        print {$out} "$_->[0]\t$_->[1]\n" for (@diffs);
+        $diff_fn = undef;
+    }
+    return ($left, $right);
+
+}
+
+sub find_rotation {
+
+    my ($p) = @_;
+
+    use constant PI => 4*atan2(1,1);
+
+    use constant COARSE_STEP => PI / 180;
+    use constant FINE_STEP   => PI / 1800;
+    use constant MAX_ROT     => PI / 8;
+
+    # flip the PDL while doing trig calcs...
+    $p = $p(:,-1:0);
+
+    #find voting points
+    warn "finding voting points...\n" if ($debug);
+    _set_status("finding voting points...");
+
+    my $b2 = $p > $thresh*(2**$curr_bits-1);
+    my $b3 = $b2 - $b2->range([0,-1],[dims $b2],'p') > 0;
+    $b3 = $b3(:,1:-1); #ignore bottom row (wrapped)
+    $b3->wpic($vote_fn) if (defined $vote_fn);
+    my $pts = $b3->whichND;
+    # $pts now contains voting points - white with black below
+
+    my ($pairs,$votes) = dims $pts;
+    warn "testing $votes points\n" if ($debug);
+
+    # Hough transform round 1 (coarse);
+    warn "performing coarse Hough transform...\n" if ($debug);
+    _set_status("performing coarse Hough transform...");
+    my %accumulator = ();
+    my $iter;
+    my ($w,$h) = dims $p;
+    POINT:
+    for ($pts->dog) {
+        ++$iter;
+        my ($x,$y) = list $_;
+        next POINT if ($x < $crop || $x > $w - $crop); # try to avoid solid borders
+        next POINT if ($y < $crop || $y > $h - $crop); # try to avoid solid borders
+        $y = $h - $y - 1; 
+        for (my $theta = PI/2 + MAX_ROT; $theta >= PI/2 - MAX_ROT; $theta -= COARSE_STEP) {
+            my $r = bin($x*cos($theta)+$y*sin($theta)+0.5, $cbin);
+            my $key = $r . ':' . $theta;
+            $accumulator{$key} += 1;
+        }
+    }
+    my $radians = process_accumulator( \%accumulator );
+    my $angle = 90 - rad2deg($radians); #convert to rotation from horizontal
+    warn "detected initial rotation: $angle\n" if ($debug); #should always be -45 < x < 45
+
+    # Hough transform round 2 (fine)
+    warn "performing fine Hough transform...\n" if ($debug);
+    _set_status("performing fine Hough transform...");
+    %accumulator = ();
+    for ($pts->dog) {
+        my ($x,$y) = list $_;
+        $y = $h - $y - 1; 
+        for (my $theta = $radians + COARSE_STEP; $theta >= $radians - COARSE_STEP; $theta -= FINE_STEP) {
+            my $r = bin($x*cos($theta)+$y*sin($theta)+0.5,$fbin);
+            my $key = $r . ':' . $theta;
+            $accumulator{$key} += 1;
+        }
+    }
+
+    $radians = process_accumulator( \%accumulator );
+    $angle = 90 - rad2deg($radians); #convert to rotation from horizontal
+    warn "detected final rotation: $angle\n" if ($debug); #should always be -45 < x < 45
+    _set_status("Idle");
+
+    # flip it back before finishing
+    $p = $p(:,-1:0);
+
+
+    return $angle;
+
+}
+
+sub find_spacing {
+
+    my ($p) = @_;
+
+    # Find column width in pixel fraction using FFT
+    my $b2 = $p > $thresh*(2**$curr_bits-1);
+    my $mask = $b2->range([0,-1],[dims $b2],'p');
+    my $b3 = $b2 - $mask;
+    $b3->inplace->abs;
+    my $colsums = sumover $b3;
+    my @samples = list $colsums; #starts at col 1 (second col)
+    if ($smooth) {
+        my @smoothed = @samples;
+        for ($smooth..$#smoothed-$smooth) {
+            my $sum;
+            for my $i ($_ - $smooth .. $_ + $smooth) {
+                $sum += $samples[$i];
+            }
+            $smoothed[$_] = $sum / ($smooth*2 + 1);
+        }
+        @samples = @smoothed;
+    }
+    if (defined $peaks_fn) {
+        open my $out, '>', $peaks_fn;
+        print {$out} "$_\n" for (@samples);
+    }
+
+    my @tmp = ();
+    for (1..$#samples) {
+        push @tmp, $samples[$_] - $samples[$_-1];
+    }
+    @samples = @tmp;
+
+    # sample count must be power of 2, so pad array as appropriate
+    while (log(scalar(@samples))/log(2) != int(log(scalar(@samples))/log(2))) {
+        push @samples, 0;
+    }
+        
+    # create x labels
+    my @freqs;
+    for (0..@samples/2) {
+        push @freqs, $_ / @samples;
+    }
+    
+    # Perform RDFT
+    my $fft = Math::FFT->new(\@samples);
+    my @sp = @{ $fft->spctrm() };
+    my @m;
+    for (0..$#sp) {
+        $m[$_] = [ $freqs[$_], $sp[$_] ];
+    }
+    if (defined $fft_fn) {
+        open my $out, '>', $fft_fn;
+        for (0..$#sp) {
+            print {$out} "$freqs[$_]\t$sp[$_]\n"
+        }
+    }
+
+    #my $m = List::Util::max(@sp0);
+    my @s = sort {$b->[1] <=> $a->[1]} @m;
+    return 1/$s[0]->[0];
+
+}
+
+sub find_fid {
+
+    my ($quad) = @_;
+    my $saved_corners = $quad->{corners};
+
+    my @sets = (
+        [0              , 0              ],
+        [$quad->{cols}-1, 0              ],
+        [$quad->{cols}-1, $quad->{rows}-1],
+        [0              , $quad->{rows}-1],
+    );
+    my @exp_sums;
+    for (0..3) {
+        my $exp_sum = 0;
+        my $set = $sets[$_];
+        my $x_sign = $set->[0] > 0 ? -1 : 1;
+        my $y_sign = $set->[1] > 0 ? -1 : 1;
+        for my $x_mult (0,2,4,6,8,10,12,14,16,18,33,35,37) {
+            my $x = $set->[0]+$x_mult*$x_sign;
+            my $y = $set->[1];
+            $exp_sum += get_value_center($quad, $x, $y, 0);
+        }
+        for my $x_mult (1,3,5,7,9,11,13,15,17,19,34,36,38) {
+            my $x = $set->[0]+$x_mult*$x_sign;
+            my $y = $set->[1];
+            $exp_sum -= get_value_center($quad, $x, $y, 0);
+        }
+        for my $y_mult (2,4,6,8,10,12,14,16,18,33,35,37) {
+            my $x = $set->[0];
+            my $y = $set->[1]+$y_mult*$y_sign;
+            $exp_sum += get_value_center($quad, $x, $y, 0);
+        }
+        for my $y_mult (3,5,7,9,11,13,15,17,19,34,36,38) {
+            my $x = $set->[0];
+            my $y = $set->[1]+$y_mult*$y_sign;
+            $exp_sum -= get_value_center($quad, $x, $y, 0);
+        }
+        $exp_sums[$_] = $exp_sum;
+    }
+    $quad->{corners} = $saved_corners;
+    return @exp_sums;
+
+}
