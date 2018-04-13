@@ -1042,8 +1042,8 @@ sub _load_files {
         $quadrants[$i]->set_pixbuf($pb);
 
         # TODO: remove dependency on Imager to get bit depth ??
-        my $i2 = Imager->new(bits => 16);
-        $i2->open(file => $file);
+        my $i2 = Imager->new(bits => 16, file => $file)
+            or die "Error creating image:", Imager->errstr;
         $quadrants[$i]->{bits} = $i2->bits();
 
         # TODO: fix this to be image-specific
