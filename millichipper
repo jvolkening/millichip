@@ -1005,67 +1005,6 @@ sub print_pair {
         MM
     /), "\n";
 
-    # locate blank and QC spots
-    my @blanks;
-    my @ctrls;
-    my @other;
-    for my $col (1..$ndf->{cols}) {
-        ROW:
-        for my $row (1..$ndf->{rows}) {
-
-            # extract cell value
-            my ($quad, $p_col, $p_row) = actual_to_grid($col-1,$row-1);
-            if (! defined $quad) {
-                warn "failed to convert value. Returning...\n";
-                return 0;
-            }
-
-            # skipped masked spots
-            next ROW if ($quad->is_masked( [$p_col,$p_row] ));
-            
-            my $int = &{$extract_functions{$method}}($quad, $p_col, $p_row, 0);
-            my $cv = &{$extract_functions{'cv'}}($quad, $p_col, $p_row, 0);
-            next ROW if (! defined $int);
-
-            if (defined $ndf->{data}->[$col]->[$row]) {
-                my $spot = $ndf->{data}->[$col]->[$row];
-                my $probe_id = $spot->{PROBE_ID};
-                if ($probe_id eq $qc_name) {
-                    push @ctrls, [$col, $row, $int, $cv];
-                }
-                else {
-                    push @other, [$col, $row, $int, $cv];
-                }
-            }
-            else {
-                push @blanks, [$col, $row, $int, $cv];
-            }
-        }
-    }
-    open my $fh_blanks, '>', 'blanks.tsv';
-    say {$fh_blanks} join("\t",@$_) for (@blanks);
-    close $fh_blanks;
-    open my $fh_ctrls, '>', 'controls.tsv';
-    say {$fh_ctrls} join("\t",@$_) for (@ctrls);
-    close $fh_ctrls;
-    open my $fh_other, '>', 'other.tsv';
-    say {$fh_other} join("\t",@$_) for (@other);
-    close $fh_other;
-
-    # here is where we calculate "bad" cells if asked
-    if ($automask) {
-        my $stat = Statistics::Descriptive::Full->new;
-        $stat->add_data(map {$_->[2]} @ctrls);
-        my $int_cutoff = $stat->percentile($automask_int_cutoff);
-        my @good = grep {$_->[2] >= $int_cutoff} @ctrls;
-        $stat->clear();
-        $stat->add_data(map {$_->[3]} @good);
-        my $cv_cutoff = $stat->percentile($automask_cv_cutoff);
-        say STDERR "CV: $cv_cutoff";
-        my @bad = grep {$_->[3] > $cv_cutoff} (@ctrls, @other);
-        @features = ();
-        @features = map {[$_->[0], $_->[1]]} @bad;
-    }
 
     for my $col (1..$ndf->{cols}) {
         ROW:
@@ -1786,11 +1725,11 @@ sub finish_grid {
     $quad->highlight(@pxls);
     $quad->update();
 
-    # when all images are gridded, calculate positions, etc
     my @best;
     for (@quadrants) {
         push @best, $_->{anchor_pos} if (defined $_->{anchor_pos});
     }
+    # when all images are gridded, calculate positions, etc
     if (@best == 4) {
 
         my $count = uniq @best;
@@ -1816,6 +1755,78 @@ sub finish_grid {
         if ($debug) {
             warn "Rotation: $chip_rotation\n";
             warn "quad $_: $quadrants[$_]->{position}\n" for (0..3);
+        }
+
+
+        # locate blank and QC spots
+        my @blanks;
+        my @ctrls;
+        my @other;
+        for my $col (1..$ndf->{cols}) {
+            ROW:
+            for my $row (1..$ndf->{rows}) {
+
+                # extract cell value
+                my ($quad, $p_col, $p_row) = actual_to_grid($col-1,$row-1);
+                if (! defined $quad) {
+                    warn "failed to convert value. Returning...\n";
+                    return 0;
+                }
+
+                # skipped masked spots
+                next ROW if ($quad->is_masked( [$p_col,$p_row] ));
+                
+                my $int = &{$extract_functions{$method}}($quad, $p_col, $p_row, 0);
+                my $cv = &{$extract_functions{'cv'}}($quad, $p_col, $p_row, 0);
+                next ROW if (! defined $int);
+
+                if (defined $ndf->{data}->[$col]->[$row]) {
+                    my $spot = $ndf->{data}->[$col]->[$row];
+                    my $probe_id = $spot->{PROBE_ID};
+                    if ($probe_id eq $qc_name) {
+                        push @ctrls, [$col, $row, $int, $cv];
+                    }
+                    else {
+                        push @other, [$col, $row, $int, $cv];
+                    }
+                }
+                else {
+                    push @blanks, [$col, $row, $int, $cv];
+                }
+            }
+        }
+        open my $fh_blanks, '>', 'blanks.tsv';
+        say {$fh_blanks} join("\t",@$_) for (@blanks);
+        close $fh_blanks;
+        open my $fh_ctrls, '>', 'controls.tsv';
+        say {$fh_ctrls} join("\t",@$_) for (@ctrls);
+        close $fh_ctrls;
+        open my $fh_other, '>', 'other.tsv';
+        say {$fh_other} join("\t",@$_) for (@other);
+        close $fh_other;
+
+        # here is where we calculate "bad" cells if asked
+        if ($automask) {
+            my $stat = Statistics::Descriptive::Full->new;
+            $stat->add_data(map {$_->[2]} @ctrls);
+            my $int_cutoff = $stat->percentile($automask_int_cutoff);
+            my @good = grep {$_->[2] >= $int_cutoff} @ctrls;
+            $stat->clear();
+            $stat->add_data(map {$_->[3]} @good);
+            my $cv_cutoff = $stat->percentile($automask_cv_cutoff);
+            say STDERR "CV: $cv_cutoff";
+            my @bad = grep {$_->[3] > $cv_cutoff} (@ctrls, @other);
+            @features = ();
+            @features = map {[$_->[0], $_->[1]]} @bad;
+
+            # mask bad cells
+            for my $cell (@bad) {
+                my ($col, $row) = @{$cell};
+                my ($quad, $p_col, $p_row) = actual_to_grid($col-1,$row-1);
+                if (defined $quad) {
+                    $quad->toggle_mask([$p_col, $p_row]);
+                }
+            }
         }
 
         # highlight features if present
