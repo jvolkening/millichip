@@ -198,6 +198,7 @@ my $qc_name = 'QC25MER';
 my $do_auto;
 my $do_auto_all;
 my $force_overwrite;
+my $fn_features;
 
 # debugging parameters
 my $debug;
@@ -234,6 +235,7 @@ my $success = GetOptions(
     'auto'        => \$do_auto,
     'auto_all'    => \$do_auto_all,
     'overwrite'   => \$force_overwrite,
+    'features=s'  => \$fn_features,
 
     'debug'       => \$debug,
     'fft_out:s'   => \$fft_fn,
@@ -1753,6 +1755,19 @@ sub finish_grid {
         if ($debug) {
             warn "Rotation: $chip_rotation\n";
             warn "quad $_: $quadrants[$_]->{position}\n" for (0..3);
+        }
+
+        # highlight features if present
+        if (defined $fn_features) {
+            open my $in, '<', $fn_features;
+            while (my $line = <$in>) {
+                chomp $line;
+                my ($col, $row) = split "\t", $line;
+                my ($quad, $p_col, $p_row) = actual_to_grid($col-1,$row-1);
+                if (defined $quad) {
+                    $quad->toggle_feature([$p_col, $p_row]);
+                }
+            }
         }
 
     }
