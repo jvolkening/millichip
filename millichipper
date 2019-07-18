@@ -191,6 +191,7 @@ my $edge_rm = 0.05;
 my $edge_win    = 100;
 my $quad_width  = 38;
 my $quad_height = 38;
+my $lln;
 my $do_auto;
 my $do_auto_all;
 my $force_overwrite;
@@ -225,6 +226,7 @@ my $success = GetOptions(
     'edge_win=i'  => \$edge_win,
     'quad_w=i'    => \$quad_width,
     'quad_h=i'    => \$quad_height,
+    'lln'         => \$lln,
     'auto'        => \$do_auto,
     'auto_all'    => \$do_auto_all,
     'overwrite'   => \$force_overwrite,
@@ -898,7 +900,7 @@ sub print_pair {
     # only output .pair if all grids are defined
     for (@quadrants) {
         if (! defined $_->{corners}) {
-            warn "not all quadrants have been gridded\n";
+            visual_warn( "Can't write PAIR - not all quadrants have been gridded");
             return;
         }
     }
@@ -2043,3 +2045,35 @@ sub find_fid {
     return @exp_sums;
 
 }
+
+sub visual_warn {
+
+    my ($error_string) = @_;
+
+    # wrap message
+    $error_string =~ s/\s/ /g;
+    my $blocked_string = '';
+    my $curr_line = '';
+    while ($error_string =~ /(\S+) ?/g) {
+        my $word = $1;
+        $curr_line = $curr_line ? "$curr_line $word" : $word;
+        if (length $curr_line >= 40) {
+            $blocked_string .= "$curr_line\n";
+            $curr_line = '';
+        }
+    }
+    $blocked_string .= $curr_line;
+
+    my $dialog = Gtk2::MessageDialog->new(
+        $gobjs->{mw},
+        'modal',
+        'error',
+        'ok',
+        $blocked_string
+        #undef,
+    );
+    $dialog->run;
+    $dialog->destroy;
+    return 0;
+}
+
