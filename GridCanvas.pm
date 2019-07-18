@@ -292,7 +292,7 @@ sub draw {
     }
 
     #hilight masked spots
-    if (keys %{$self->{masked}} > 0) {
+    if ($self->{show_masked} && keys %{$self->{masked}} > 0) {
         $cr->save;
         $cr->set_source_rgba(1.0, 0.0, 0.0, 0.6);
         $cr->set_line_width(0);
@@ -350,7 +350,7 @@ sub draw {
     }
 
     #hilight featured spots
-    if (keys %{$self->{feature}} > 0 && defined $self->{corners}) {
+    if ($self->{show_features} && keys %{$self->{feature}} > 0 && defined $self->{corners}) {
         $cr->save;
         $cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
         #$cr->set_line_width(0);
@@ -398,11 +398,13 @@ sub INIT_INSTANCE {
 
 	my $self = shift;
 
-	$self->{line_width} = 0.05;
-	$self->{radius}     = 0.42;
-    $self->{zoom} = 1;
-    $self->{show_grid} = 1;
-    $self->{show_hilite} = 0;
+	$self->{line_width}    = 0.05;
+	$self->{radius}        = 0.42;
+    $self->{zoom}          = 1;
+    $self->{show_grid}     = 1;
+    $self->{show_masked}   = 1;
+    $self->{show_features} = 1;
+    $self->{show_hilite}   = 0;
 
     $self->add_events('GDK_BUTTON_PRESS_MASK');
     $self->add_events('GDK_BUTTON_RELEASE_MASK');
@@ -430,6 +432,20 @@ sub set_show_grid {
     
     my ($self, $bool) = @_;
     $self->{show_grid} = $bool;
+
+}
+
+sub set_show_masked {
+    
+    my ($self, $bool) = @_;
+    $self->{show_masked} = $bool;
+
+}
+
+sub set_show_features {
+    
+    my ($self, $bool) = @_;
+    $self->{show_features} = $bool;
 
 }
 

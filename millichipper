@@ -25,6 +25,8 @@ $ui = <<XML;
     </menu>
     <menu name="ViewMenu" action="ViewMenu">
       <menuitem name="Show_Grid" action="Show_Grid"/>
+      <menuitem name="Show_Masked" action="Show_Masked"/>
+      <menuitem name="Show_Features" action="Show_Features"/>
       <menuitem name="HL_Used" action="HL_Used"/>
       <separator />
       <menuitem name="Zoom_In" action="Zoom_In"/>
@@ -374,8 +376,10 @@ sub _return_framework {
         [ "Zoom_Fit", 'gtk-zoom-fit',    "_Zoom to fit", undef,       "Zoom fit",   sub{zoom(undef,0)}  ],
     );
     my @toggle_actions = (
-        [ "Show_Grid", undef,            "_Show grid",      undef,    "Show grid",      \&toggle_grid,      1 ],
-        [ "HL_Used",   undef,            "_Highlight used", undef,    "Highlight used", \&toggle_highlight, 0 ],
+        [ "Show_Grid",     undef,        "_Show grid",      undef,    "Show grid",      \&toggle_grid,        1 ],
+        [ "Show_Masked",   undef,        "_Show masked",    undef,    "Show masked",    \&toggle_show_masked, 1 ],
+        [ "Show_Features", undef,        "_Show features",  undef,    "Show features",  \&toggle_show_feats,  1 ],
+        [ "HL_Used",       undef,        "_Highlight used", undef,    "Highlight used", \&toggle_highlight,   0 ],
     );
 
     my $actions = Gtk2::ActionGroup->new( "Actions" );
@@ -919,6 +923,26 @@ sub toggle_grid {
     my ($btn) = @_;
     for (@quadrants) {
         $_->set_show_grid( $btn->get_active );
+        $_->update();
+    }
+
+}
+
+sub toggle_show_masked {
+
+    my ($btn) = @_;
+    for (@quadrants) {
+        $_->set_show_masked( $btn->get_active );
+        $_->update();
+    }
+
+}
+
+sub toggle_show_feats {
+
+    my ($btn) = @_;
+    for (@quadrants) {
+        $_->set_show_features( $btn->get_active );
         $_->update();
     }
 
