@@ -306,37 +306,13 @@ sub draw {
                 $cr->line_to($x2,$y2);
                 $cr->line_to($x3,$y3);
                 $cr->line_to($x4,$y4);
+                $cr->close_path;
             }
         }
-        $cr->close_path;
         $cr->fill;
         $cr->restore;
     }
 
-    #hilight featured spots
-    if (keys %{$self->{feature}} > 0 && defined $self->{corners}) {
-        $cr->save;
-        $cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
-        #$cr->set_line_width(0);
-        my ($w,$h) = $cr->device_to_user_distance(1.0,0.0);
-        $cr->set_line_width($w*2);
-        for my $x (keys %{$self->{feature}}) {
-            for my $y (keys %{$self->{feature}->{$x}}) {
-                my ($x1,$y1) = $self->grid2px($x-0.5,$y-0.5);
-                my ($x2,$y2) = $self->grid2px($x+0.5,$y-0.5);
-                my ($x3,$y3) = $self->grid2px($x+0.5,$y+0.5);
-                my ($x4,$y4) = $self->grid2px($x-0.5,$y+0.5);
-                $cr->move_to($x1,$y1);
-                $cr->line_to($x2,$y2);
-                $cr->line_to($x3,$y3);
-                $cr->line_to($x4,$y4);
-            }
-        }
-        $cr->close_path;
-        #$cr->fill;
-        $cr->stroke;
-        $cr->restore;
-    }
 
     #draw grid on top of everything
 
@@ -371,6 +347,31 @@ sub draw {
         $cr->stroke;
         $cr->restore;
 
+    }
+
+    #hilight featured spots
+    if (keys %{$self->{feature}} > 0 && defined $self->{corners}) {
+        $cr->save;
+        $cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
+        #$cr->set_line_width(0);
+        my ($w,$h) = $cr->device_to_user_distance(1.0,0.0);
+        $cr->set_line_width($w*2);
+        for my $x (keys %{$self->{feature}}) {
+            for my $y (keys %{$self->{feature}->{$x}}) {
+                my ($x1,$y1) = $self->grid2px($x-0.5,$y-0.5);
+                my ($x2,$y2) = $self->grid2px($x+0.5,$y-0.5);
+                my ($x3,$y3) = $self->grid2px($x+0.5,$y+0.5);
+                my ($x4,$y4) = $self->grid2px($x-0.5,$y+0.5);
+                $cr->move_to($x1,$y1);
+                $cr->line_to($x2,$y2);
+                $cr->line_to($x3,$y3);
+                $cr->line_to($x4,$y4);
+                $cr->close_path;
+            }
+        }
+        #$cr->fill;
+        $cr->stroke;
+        $cr->restore;
     }
 	
 	return TRUE;
