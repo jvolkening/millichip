@@ -110,6 +110,8 @@ package main;
 
 use strict;
 use warnings;
+use 5.012;
+
 use File::Basename qw/basename/;
 use File::Temp qw/tempfile/;
 use FindBin;
@@ -192,6 +194,7 @@ my $edge_win    = 100;
 my $quad_width  = 38;
 my $quad_height = 38;
 my $lln;
+my $qc_name = 'QC25MER';
 my $do_auto;
 my $do_auto_all;
 my $force_overwrite;
@@ -227,6 +230,7 @@ my $success = GetOptions(
     'quad_w=i'    => \$quad_width,
     'quad_h=i'    => \$quad_height,
     'lln'         => \$lln,
+    'qc_name'     => \$qc_name,
     'auto'        => \$do_auto,
     'auto_all'    => \$do_auto_all,
     'overwrite'   => \$force_overwrite,
@@ -953,6 +957,54 @@ sub print_pair {
         PM
         MM
     /), "\n";
+
+    # locate blank and QC spots
+    my @blanks;
+    my @ctrls;
+    my @other;
+    for my $col (1..$ndf->{cols}) {
+        ROW:
+        for my $row (1..$ndf->{rows}) {
+
+            # extract cell value
+            my ($quad, $p_col, $p_row) = actual_to_grid($col-1,$row-1);
+            if (! defined $quad) {
+                warn "failed to convert value. Returning...\n";
+                return 0;
+            }
+
+            # skipped masked spots
+            next ROW if ($quad->is_masked( [$p_col,$p_row] ));
+            
+            my $int = &{$extract_functions{$method}}($quad, $p_col, $p_row, 0);
+            next ROW if (! defined $int);
+
+            if (defined $ndf->{data}->[$col]->[$row]) {
+                my $spot = $ndf->{data}->[$col]->[$row];
+                my $probe_id = $spot->{PROBE_ID};
+                if ($probe_id eq $qc_name) {
+                    push @ctrls, [$col, $row, $int];
+                }
+                else {
+                    push @other, [$col, $row, $int];
+                }
+            }
+            else {
+                push @blanks, [$col, $row, $int];
+            }
+        }
+    }
+    open my $fh_blanks, '>', 'blanks.tsv';
+    say {$fh_blanks} join("\t",@$_) for (@blanks);
+    close $fh_blanks;
+    open my $fh_ctrls, '>', 'controls.tsv';
+    say {$fh_ctrls} join("\t",@$_) for (@ctrls);
+    close $fh_ctrls;
+    open my $fh_other, '>', 'other.tsv';
+    say {$fh_other} join("\t",@$_) for (@other);
+    close $fh_other;
+
+
     for my $col (1..$ndf->{cols}) {
         ROW:
         for my $row (1..$ndf->{rows}) {
