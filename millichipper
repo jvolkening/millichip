@@ -142,6 +142,7 @@ use GridCanvas;
 # constants
 use constant ZI => 1.25;
 use constant ZO => 0.80;
+use constant SIDEBAR_W => 200;
 
 # globals
 my $NAME    = 'gRidderM';
@@ -159,6 +160,8 @@ my %extract_functions = (
     'cv'     => \&get_value_cv,
 );
 my $zoom_mode = 0;
+my $C_g; # global control estimate (currently median)
+my $B_g; # global blank estimate (currently median)
 
 my @quadrants;
 # these should be added to the quadrant objects
@@ -183,7 +186,7 @@ my $in_dir;
 my $pair_fn;
 my $padding = 0;
 my $method  = 'median';
-my $bg_rm   = 1;
+my $bg_rm   = 0;
 my $upper   = 0.95;
 my $lower   = 0.50;
 my $cbin    = 2;
@@ -206,6 +209,7 @@ my $fn_features;
 my $automask = 0;
 my $automask_cv_cutoff = 95;
 my $automask_int_cutoff = 10;
+my $norm_spots = 4;
 
 # debugging parameters
 my $debug;
@@ -219,39 +223,40 @@ my $theta_fn;
 
 my $success = GetOptions(
 
-    'dir:s'       => \$in_dir,
-    'pair_out:s'  => \$pair_fn,
-    'padding:i'   => \$padding,
-    'method:s'    => \$method,
-    'bg_rm'       => \$bg_rm,
-    'upper=f'     => \$upper,
-    'lower=f'     => \$lower,
-    'cbin=f'      => \$cbin,
-    'fbin=f'      => \$fbin,
-    'thresh=f'    => \$thresh,
-    'smooth=i'    => \$smooth,
-    'crop=i'      => \$crop,
-    'opt_th=f'    => \$opt_th,
-    'edge_th=f'   => \$edge_th,
-    'edge_rm=f'   => \$edge_rm,
-    'edge_win=i'  => \$edge_win,
-    'quad_w=i'    => \$quad_width,
-    'quad_h=i'    => \$quad_height,
-    'lln'         => \$lln,
-    'qc_name'     => \$qc_name,
-    'auto'        => \$do_auto,
-    'auto_all'    => \$do_auto_all,
-    'overwrite'   => \$force_overwrite,
-    'features=s'  => \$fn_features,
-    'automask'    => \$automask,
+    'dir:s'        => \$in_dir,
+    'pair_out:s'   => \$pair_fn,
+    'padding:i'    => \$padding,
+    'method:s'     => \$method,
+    'bg_rm'        => \$bg_rm,
+    'upper=f'      => \$upper,
+    'lower=f'      => \$lower,
+    'cbin=f'       => \$cbin,
+    'fbin=f'       => \$fbin,
+    'thresh=f'     => \$thresh,
+    'smooth=i'     => \$smooth,
+    'crop=i'       => \$crop,
+    'opt_th=f'     => \$opt_th,
+    'edge_th=f'    => \$edge_th,
+    'edge_rm=f'    => \$edge_rm,
+    'edge_win=i'   => \$edge_win,
+    'quad_w=i'     => \$quad_width,
+    'quad_h=i'     => \$quad_height,
+    'lln'          => \$lln,
+    'qc_name'      => \$qc_name,
+    'auto'         => \$do_auto,
+    'auto_all'     => \$do_auto_all,
+    'overwrite'    => \$force_overwrite,
+    'features=s'   => \$fn_features,
+    'automask'     => \$automask,
+    'norm_spots=i' => \$norm_spots,
 
-    'debug'       => \$debug,
-    'fft_out:s'   => \$fft_fn,
-    'peaks_out:s' => \$peaks_fn,
-    'diffs_out:s' => \$diff_fn,
-    'rot_out:s'   => \$rot_fn,
-    'vote_out:s'  => \$vote_fn,
-    'theta_out:s' => \$theta_fn,
+    'debug'        => \$debug,
+    'fft_out:s'    => \$fft_fn,
+    'peaks_out:s'  => \$peaks_fn,
+    'diffs_out:s'  => \$diff_fn,
+    'rot_out:s'    => \$rot_fn,
+    'vote_out:s'   => \$vote_fn,
+    'theta_out:s'  => \$theta_fn,
 
 );
 
@@ -434,7 +439,7 @@ sub _return_framework {
     # create sidebar
     my $hbox_main = Gtk2::HBox->new(FALSE,0);
     my $vbox_info = Gtk2::VBox->new(FALSE,0);
-    $vbox_info->set_size_request(240,-1);
+    $vbox_info->set_size_request(SIDEBAR_W,-1);
 
     # img/ndf file buttons
     my $tbl_files = Gtk2::Table->new(2,2,FALSE);
@@ -712,7 +717,7 @@ sub get_bg {
 
 sub get_value_center {
 
-    my ($quad, $x, $y, $bg_subtract) = @_;
+    my ($quad, $x, $y) = @_;
     my ($a,$b) = $quad->grid2px($x,$y);
 
     my $pdl = $quad->{pdl};
@@ -724,16 +729,16 @@ sub get_value_center {
     }
 
     my $int = $pdl->at( $a, $b );
-    if ($bg_subtract) {
-        $int -= get_bg($quad, $x, $y, \&get_value_center );
-    }
-    return round($int,0);
+    #if ($bg_subtract) {
+        #$int -= get_bg($quad, $x, $y, \&get_value_center );
+    #}
+    return $int;
 
 }
 
 sub get_value_median {
 
-    my ($quad, $x, $y, $bg_subtract) = @_;
+    my ($quad, $x, $y) = @_;
 
     my $pdl = $quad->{pdl};
     my ($w,$h) = dims $pdl;
@@ -754,18 +759,17 @@ sub get_value_median {
     }
 
     my $int = median(@ints);
+    #if ($bg_subtract) {
+        #$int -= get_bg($quad, $x,$y,\&get_value_median );
+    #}
 
-    if ($bg_subtract) {
-        $int -= get_bg($quad, $x,$y,\&get_value_median );
-    }
-
-    return round($int,0);
+    return $int;
 
 }
 
 sub get_value_mean {
 
-    my ($quad, $x, $y, $bg_subtract) = @_;
+    my ($quad, $x, $y) = @_;
 
     my $pdl = $quad->{pdl};
     my ($w,$h) = dims $pdl;
@@ -786,18 +790,17 @@ sub get_value_mean {
     }
 
     my $int = List::Util::sum(@ints)/@ints;
+    #if ($bg_subtract) {
+        #$int -= get_bg($quad, $x,$y,\&get_value_mean );
+    #}
 
-    if ($bg_subtract) {
-        $int -= get_bg($quad, $x,$y,\&get_value_mean );
-    }
-
-    return round($int,0);
+    return $int;
 
 }
 
 sub get_value_cv {
 
-    my ($quad, $x, $y, $bg_subtract) = @_;
+    my ($quad, $x, $y) = @_;
 
     my $pdl = $quad->{pdl};
     my ($w,$h) = dims $pdl;
@@ -821,7 +824,7 @@ sub get_value_cv {
     my $sd = sqrt( List::Util::sum( map {($_ - $mu)**2} @ints )/scalar(@ints) );
     my $cv = $sd/$mu;
 
-    return round($cv,5);
+    return $cv;
 
 }
 
@@ -1052,8 +1055,25 @@ sub print_pair {
                 # skipped masked spots
                 next ROW if ($quad->is_masked( [$p_col,$p_row] ));
                 
-                my $int = &{$extract_functions{$method}}($quad, $p_col, $p_row, $bg_rm);
+                my $int = &{$extract_functions{$method}}($quad, $p_col, $p_row);
                 next ROW if (! defined $int);
+                my ($m, $b);
+                if ($lln) {
+                    ($m, $b) = find_transform($quad, $p_col, $p_row);
+                    $int = $m * $int + $b;
+                }
+                if ($bg_rm) {
+                    my $bg = get_bg(
+                        $quad,
+                        $p_col,
+                        $p_row,
+                        $extract_functions{$method} 
+                    );
+                    if ($lln) {
+                        $bg = $m * $bg + $b;
+                    }
+                    $int -= $bg;
+                }
 
                 my $img_id = $quad->{filename};
                 $img_id =~ s/\.[^\.]+$//;
@@ -1067,7 +1087,7 @@ sub print_pair {
                     $col,
                     $row,
                     $match_idx,
-                    $int,
+                    round($int, 0),
                     0
                 )), "\n";
             }
@@ -1360,8 +1380,8 @@ sub on_click {
                 $feature_info_lbls[0]->set_label($col);
                 $feature_info_lbls[1]->set_label($row);
                 #my $int = get_value_center($quad, @{ $nearest_spot },0);
-                my $int = &{$extract_functions{$method}}($quad, @{ $nearest_spot }, 0);
-                $feature_info_lbls[4]->set_label($int);
+                my $int = &{$extract_functions{$method}}($quad, @{ $nearest_spot });
+                $feature_info_lbls[4]->set_label(round($int,0));
                 if (defined $ref) {
                     $feature_info_lbls[2]->set_label($ref->{PROBE_ID});
                     $feature_info_lbls[3]->set_label($ref->{PROBE_CLASS});
@@ -1798,10 +1818,10 @@ sub finish_grid {
                 }
 
                 # skipped masked spots
-                next ROW if ($quad->is_masked( [$p_col,$p_row] ));
+                #next ROW if ($quad->is_masked( [$p_col,$p_row] ));
                 
-                my $int = &{$extract_functions{$method}}($quad, $p_col, $p_row, 0);
-                my $cv = &{$extract_functions{'cv'}}($quad, $p_col, $p_row, 0);
+                my $int = &{$extract_functions{$method}}($quad, $p_col, $p_row);
+                my $cv = &{$extract_functions{'cv'}}($quad, $p_col, $p_row);
                 next ROW if (! defined $int);
 
                 if (defined $ndf->{data}->[$col]->[$row]) {
@@ -1809,6 +1829,7 @@ sub finish_grid {
                     my $probe_id = $spot->{PROBE_ID};
                     if ($probe_id eq $qc_name) {
                         push @ctrls, [$col, $row, $int, $cv];
+                        push @{ $quad->{ctrls} }, [$p_col, $p_row, $int];
                     }
                     else {
                         push @other, [$col, $row, $int, $cv];
@@ -1816,18 +1837,26 @@ sub finish_grid {
                 }
                 else {
                     push @blanks, [$col, $row, $int, $cv];
+                    push @{ $quad->{blanks} }, [$p_col, $p_row, $int];
                 }
             }
         }
-        open my $fh_blanks, '>', 'blanks.tsv';
-        say {$fh_blanks} join("\t",@$_) for (@blanks);
-        close $fh_blanks;
-        open my $fh_ctrls, '>', 'controls.tsv';
-        say {$fh_ctrls} join("\t",@$_) for (@ctrls);
-        close $fh_ctrls;
-        open my $fh_other, '>', 'other.tsv';
-        say {$fh_other} join("\t",@$_) for (@other);
-        close $fh_other;
+
+        $C_g = median( map {$_->[2]} @ctrls);
+        $B_g = median( map {$_->[2]} @blanks);
+        say STDERR "GLOBAL C: $C_g B: $B_g";
+
+        if ($debug) {
+            open my $fh_blanks, '>', 'blanks.tsv';
+            say {$fh_blanks} join("\t",@$_) for (@blanks);
+            close $fh_blanks;
+            open my $fh_ctrls, '>', 'controls.tsv';
+            say {$fh_ctrls} join("\t",@$_) for (@ctrls);
+            close $fh_ctrls;
+            open my $fh_other, '>', 'other.tsv';
+            say {$fh_other} join("\t",@$_) for (@other);
+            close $fh_other;
+        }
 
         # here is where we calculate "bad" cells if asked
         if ($automask) {
@@ -2236,3 +2265,46 @@ sub visual_warn {
     return 0;
 }
 
+sub find_transform {
+
+    my ($quad, $x, $y) = @_;
+
+    # find local control estimate
+    my @dists;
+    my @ctrls = @{ $quad->{ctrls} };
+    @ctrls = grep {! $quad->is_masked([
+        $_->[0], $_->[1]
+    ]) } @ctrls;
+    for (@ctrls) {
+        my ($cx, $cy, $int) = @{ $_ };
+        my $dist = sqrt(($cx - $x)**2 + ($cy - $y)**2);
+        push @dists, [$dist, $cx, $cy, $int];
+    }
+    @dists = sort {$a->[0] <=> $b->[0]} @dists;
+    my @vals;
+    for (0..$norm_spots-1) {
+        push @vals, $dists[$_]->[3];
+    }
+    my $C_l = median(@vals);
+       
+    # find local blank estimate
+    @dists = ();
+    for (@{ $quad->{blanks} }) {
+        my ($cx, $cy, $int) = @{ $_ };
+        my $dist = sqrt(($cx - $x)**2 + ($cy - $y)**2);
+        push @dists, [$dist, $cx, $cy, $int];
+    }
+    @dists = sort {$a->[0] <=> $b->[0]} @dists;
+    @vals = ();
+    for (0..$norm_spots-1) {
+        push @vals, $dists[$_]->[3];
+    }
+    my $B_l = median(@vals);
+
+    # calculate slope and intercept of transform
+    my $m = ($C_g - $B_g)/($C_l - $B_l);
+    my $b = $B_g - $m*$B_l;
+
+    return ($m,$b);
+
+}
