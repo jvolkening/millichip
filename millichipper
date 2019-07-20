@@ -1654,7 +1654,10 @@ sub auto_grid {
     warn "performing image rotation...\n" if ($debug);
     $pdl_mod = $pdl_mod->rot2d(-$angle,0,1);
 
-    $pdl_mod->wpic($rot_fn) if (defined $rot_fn);
+    if (defined $rot_fn) {
+        $pdl_mod->wpic($rot_fn);
+        $rot_fn = undef;
+    }
 
     ($w,$h) = dims $pdl_mod;
 
