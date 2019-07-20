@@ -144,6 +144,13 @@ use constant ZI => 1.25;
 use constant ZO => 0.80;
 use constant SIDEBAR_W => 200;
 
+use constant PI => 4*atan2(1,1);
+
+use constant COARSE_STEP => PI / 200;
+use constant FINE_STEP   => PI / 8000;
+use constant MAX_ROT     => PI / 8;
+
+
 # globals
 my $NAME    = 'gRidderM';
 my $VERSION = '0.3a';
@@ -219,6 +226,7 @@ my $diff_fn;
 my $rot_fn;
 my $vote_fn;
 my $theta_fn;
+my $fine_fn;
 
 
 my $success = GetOptions(
@@ -257,6 +265,7 @@ my $success = GetOptions(
     'rot_out:s'    => \$rot_fn,
     'vote_out:s'   => \$vote_fn,
     'theta_out:s'  => \$theta_fn,
+    'fine_out:s'   => \$fine_fn,
 
 );
 
@@ -1581,7 +1590,7 @@ sub process_accumulator {
 
     # determine optimal rotation from Hough accumulator hash (might be further
     # optimized)
-    my $acc = shift;
+    my ($acc, $fn) = @_;
     my @sorted = sort {$acc->{$b} <=> $acc->{$a}} keys %{$acc};
 
     my %squared = ();
@@ -1590,10 +1599,10 @@ sub process_accumulator {
         my $count = $acc->{$_};
         $squared{$theta} += $count**2;
     }
-    if (defined $theta_fn) {
+    if (defined $fn) {
         my @s2 = sort {$a <=> $b} keys %squared;
-        open my $out, '>', $theta_fn;
-        print {$out} "$_\t$squared{$_}\n" for (@s2);
+        open my $out, '>', $fn;
+        print {$out} PI/2 - $_, "\t$squared{$_}\n" for (@s2);
     }
     @sorted = sort {$squared{$b} <=> $squared{$a}} keys %squared;
     return $sorted[0];
@@ -2003,7 +2012,7 @@ sub bin {
     $val *= 10;
     $binsize *= 10;
     my $i = int($val);
-    return ($i + $binsize - $i%$binsize)/10;
+    return ($i + $binsize/2 - $i%$binsize)/10;
 
 }
 
@@ -2053,12 +2062,6 @@ sub find_rotation {
 
     my ($p) = @_;
 
-    use constant PI => 4*atan2(1,1);
-
-    use constant COARSE_STEP => PI / 180;
-    use constant FINE_STEP   => PI / 1800;
-    use constant MAX_ROT     => PI / 8;
-
     # flip the PDL while doing trig calcs...
     $p = $p(:,-1:0);
 
@@ -2095,7 +2098,7 @@ sub find_rotation {
             $accumulator{$key} += 1;
         }
     }
-    my $radians = process_accumulator( \%accumulator );
+    my $radians = process_accumulator( \%accumulator, $theta_fn );
     my $angle = 90 - rad2deg($radians); #convert to rotation from horizontal
     warn "detected initial rotation: $angle\n" if ($debug); #should always be -45 < x < 45
 
@@ -2103,8 +2106,11 @@ sub find_rotation {
     warn "performing fine Hough transform...\n" if ($debug);
     _set_status("performing fine Hough transform...");
     %accumulator = ();
+    POINT:
     for ($pts->dog) {
         my ($x,$y) = list $_;
+        next POINT if ($x < $crop || $x > $w - $crop); # try to avoid solid borders
+        next POINT if ($y < $crop || $y > $h - $crop); # try to avoid solid borders
         $y = $h - $y - 1; 
         for (my $theta = $radians + COARSE_STEP; $theta >= $radians - COARSE_STEP; $theta -= FINE_STEP) {
             my $r = bin($x*cos($theta)+$y*sin($theta)+0.5,$fbin);
@@ -2113,7 +2119,7 @@ sub find_rotation {
         }
     }
 
-    $radians = process_accumulator( \%accumulator );
+    $radians = process_accumulator( \%accumulator, $fine_fn );
     $angle = 90 - rad2deg($radians); #convert to rotation from horizontal
     warn "detected final rotation: $angle\n" if ($debug); #should always be -45 < x < 45
     _set_status("Idle");
