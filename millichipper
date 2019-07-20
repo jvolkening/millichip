@@ -2156,7 +2156,13 @@ sub find_spacing {
     }
     if (defined $peaks_fn) {
         open my $out, '>', $peaks_fn;
-        print {$out} "$_\n" for (@samples);
+        say {$out} join "\t", 'column', 'delta';
+        for (0..$#samples) {
+            say {$out} join "\t",
+                $_+1,
+                $samples[$_],
+            ;
+        }
     }
 
     my @tmp = ();
@@ -2185,8 +2191,9 @@ sub find_spacing {
     }
     if (defined $fft_fn) {
         open my $out, '>', $fft_fn;
+        say {$out} "frequency\tamplitude";
         for (0..$#sp) {
-            print {$out} "$freqs[$_]\t$sp[$_]\n"
+            say {$out} "$freqs[$_]\t$sp[$_]"
         }
     }
 
