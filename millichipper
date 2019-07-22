@@ -215,7 +215,7 @@ my $force_overwrite;
 my $fn_features;
 my $automask = 0;
 my $automask_cv_cutoff = 95;
-my $automask_int_cutoff = 10;
+my $automask_int_cutoff = 15;
 my $norm_spots = 4;
 
 # debugging parameters
@@ -227,6 +227,7 @@ my $rot_fn;
 my $vote_fn;
 my $theta_fn;
 my $fine_fn;
+my $automask_fn;
 
 
 my $success = GetOptions(
@@ -257,6 +258,7 @@ my $success = GetOptions(
     'features=s'   => \$fn_features,
     'automask'     => \$automask,
     'norm_spots=i' => \$norm_spots,
+    'automask_cutoff=i' => \$automask_int_cutoff,
 
     'debug'        => \$debug,
     'fft_out:s'    => \$fft_fn,
@@ -266,6 +268,7 @@ my $success = GetOptions(
     'vote_out:s'   => \$vote_fn,
     'theta_out:s'  => \$theta_fn,
     'fine_out:s'   => \$fine_fn,
+    'automask_out:s' => \$automask_fn,
 
 );
 
@@ -720,7 +723,7 @@ sub get_bg {
         }
     }
     warn "no background spots used for $x,$y!\n" if (! @background);
-    return @background > 0 ? median(@background) : 0;
+    return @background > 0 ? median(@background) : $B_g;
 
 }
 
@@ -1623,7 +1626,9 @@ sub auto_grid {
     # set "working" cursor
     my $prev_cursor = $gobjs->{mw}->get_window->get_cursor();
     $gobjs->{mw}->get_window->set_cursor(Gtk2::Gdk::Cursor->new('watch'));
-    Gtk2->main_iteration while (Gtk2->events_pending);
+    while (Gtk2->events_pending) {
+        Gtk2->main_iteration_do(FALSE);
+    }
 
     # remember initial midpoints for rotation
     my $pdl = $quad->{pdl};
@@ -1763,7 +1768,9 @@ sub auto_grid {
     finish_grid($quad);
 
     $gobjs->{mw}->get_window->set_cursor($prev_cursor);
-    Gtk2->main_iteration_do(TRUE);
+    while (Gtk2->events_pending) {
+        Gtk2->main_iteration_do(FALSE);
+    }
 
 }
 
@@ -1790,7 +1797,7 @@ sub finish_grid {
 
         my $count = uniq @best;
         if ($count != 4) {
-            warn "not all anchors are unique!!\n";
+            visual_warn( "Not all anchors are unique! Be sure to check the grid alignments by eye");
             return;
         }
 
@@ -1875,12 +1882,99 @@ sub finish_grid {
             my $stat = Statistics::Descriptive::Full->new;
             $stat->add_data(map {$_->[2]} @ctrls);
             my $int_cutoff = $stat->percentile($automask_int_cutoff);
+
             my @good = grep {$_->[2] >= $int_cutoff} @ctrls;
+            my @bad  = grep {$_->[2] > $int_cutoff} @ctrls;
+
             $stat->clear();
             $stat->add_data(map {$_->[3]} @good);
             my $cv_cutoff = $stat->percentile($automask_cv_cutoff);
-            say STDERR "CV: $cv_cutoff";
-            my @bad = grep {$_->[3] > $cv_cutoff} (@ctrls, @other);
+            say STDERR "Starting CV cutoff: $cv_cutoff";
+
+            my $step = 0.001;
+            my $score;
+            $score += scalar grep {$_->[3] <= $cv_cutoff} @good;
+            $score += scalar grep {$_->[3] > $cv_cutoff} @bad;
+            say STDERR "Starting score: $score";
+
+            my $final_cutoff = $cv_cutoff;
+
+            # This optimization is currently very crude and only finds a local
+            # maximum. There is much room here for improvement.
+
+            my $tmp_down = $cv_cutoff;
+            while (1) {
+                $tmp_down -= $step;
+                my $n_good = scalar grep {$_->[3] <= $tmp_down} @good;
+                my $n_bad  =  scalar grep {$_->[3] > $tmp_down} @bad;
+                my $tmp_score = $n_good + $n_bad;
+                last if ($tmp_score < $score);
+                last if ($n_good == 0);
+                if ($tmp_score > $score) {
+                    $score = $tmp_score;
+                    say STDERR "DOWN: $score";
+                    $final_cutoff = $tmp_down;
+                }
+            }
+            my $tmp_up = $cv_cutoff;
+            while (1) {
+                $tmp_up += $step;
+                my $n_good = scalar grep {$_->[3] <= $tmp_up} @good;
+                my $n_bad  =  scalar grep {$_->[3] > $tmp_up} @bad;
+                my $tmp_score = $n_good + $n_bad;
+                last if ($tmp_score < $score);
+                last if ($n_bad == 0);
+                if ($tmp_score > $score) {
+                    $score = $tmp_score;
+                    say STDERR "UP: $score";
+                    $final_cutoff = $tmp_up;
+                }
+            }
+            
+            $cv_cutoff = $final_cutoff;
+            say STDERR "Final CV cutoff: $cv_cutoff";
+
+            if (defined $automask_fn) {
+                open my $out, '>', $automask_fn;
+                say {$out} join "\t", qw/
+                    intensity
+                    cv
+                    group
+                    status
+                    cutoff
+                /;
+                for (@ctrls) {
+                    say {$out} join "\t",
+                        $_->[2],
+                        $_->[3],
+                        'control',
+                        ($_->[2] <= $int_cutoff ? 'bad' : 'good'),
+                        $cv_cutoff
+                    ;
+                }
+                for (@other) {
+                    say {$out} join "\t",
+                        $_->[2],
+                        $_->[3],
+                        'experimental',
+                        ($_->[2] <= $int_cutoff ? 'bad' : 'good'),
+                        $cv_cutoff
+                    ;
+                }
+                for (@blanks) {
+                    say {$out} join "\t",
+                        $_->[2],
+                        $_->[3],
+                        'blank',
+                        ($_->[2] <= $int_cutoff ? 'bad' : 'good'),
+                        $cv_cutoff
+                    ;
+                }
+                close $out;
+
+            }
+
+            @bad = grep {$_->[3] > $cv_cutoff} (@ctrls, @other);
             @features = ();
             @features = map {[$_->[0], $_->[1]]} @bad;
 
