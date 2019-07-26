@@ -218,6 +218,7 @@ my $automask = 0;
 my $automask_cv_cutoff = 95;
 my $automask_int_cutoff = 15;
 my $norm_spots = 4;
+my $optimize = 1;
 
 # debugging parameters
 my $debug;
@@ -253,7 +254,7 @@ my $success = GetOptions(
     'quad_w=i'     => \$quad_width,
     'quad_h=i'     => \$quad_height,
     'lln'          => \$lln,
-    'qc_name'      => \$qc_name,
+    'qc_name=s'    => \$qc_name,
     'auto'         => \$do_auto,
     'auto_all'     => \$do_auto_all,
     'overwrite'    => \$force_overwrite,
@@ -261,6 +262,7 @@ my $success = GetOptions(
     'automask'     => \$automask,
     'norm_spots=i' => \$norm_spots,
     'automask_cutoff=i' => \$automask_int_cutoff,
+    'optimize!'    => \$optimize,
 
     'debug'        => \$debug,
     'fft_out:s'    => \$fft_fn,
@@ -697,7 +699,9 @@ sub zoom {
 sub median {
 
     my @sorted = sort {$a <=> $b} @_;
+    die "median input empty" if (! scalar @sorted);
     my $mid = int(@sorted/2);
+    return $sorted[0] if (scalar(@sorted) == 1);
     return $sorted[$mid] if (@sorted%2);
     return ($sorted[$mid-1] + $sorted[$mid])/2;
 
@@ -1364,13 +1368,14 @@ sub on_click {
                 my $calc_dim = sqrt(($corners[1]->[0] - $corners[0]->[0])**2
                     + ($corners[1]->[1] - $corners[0]->[1])**2)/($quad->{rows}-1);
 
-                my @new = optimize_corners(
+                my @new = $optimize ? optimize_corners(
                     $calc_dim,
                     $calc_dim,
                     [@corners],
                     $quad->{pdl},
-                    ($max_sum->[0]+2)%4
-                );
+                    ($max_sum->[0]+2)%4,
+                    $max_sum->[0],
+                ) : @corners;
 
                 $quad->{corners} = [@new];
                 finish_grid( $quad );
@@ -1751,13 +1756,14 @@ sub auto_grid {
             $new[$c] = $next;
         }
         $c = ($c+1)%4; # reset to starting point
-        @new = optimize_corners(
+        @new = $optimize ? optimize_corners(
             $calc_w,
             $calc_h,
             [@new],
             $quad->{pdl},
-            ($c+2)%4
-        );
+            ($c+2)%4,
+            $c,
+        ) : @new;
         $quad->{corners} = [@new];
         my @sums = find_fid($quad);
         for (0..$#sums) {
@@ -1868,6 +1874,7 @@ sub finish_grid {
             }
         }
 
+        my $nc = scalar @ctrls;
         $C_g = median( map {$_->[2]} @ctrls);
         $B_g = median( map {$_->[2]} @blanks);
         say STDERR "GLOBAL C: $C_g B: $B_g";
@@ -2010,13 +2017,21 @@ sub finish_grid {
 
 sub optimize_corners {
 
-    my ($w,$h,$corn_ptr,$pdl,$skip) = @_;
+    my ($w,$h,$corn_ptr,$pdl,$skip,$anch) = @_;
 
     my @used;
     $used[0] = defined $ndf->{data}->[1]->[1] ? 1 : 0;
     $used[1] = defined $ndf->{data}->[$quad_width]->[1] ? 1 : 0;
     $used[2] = defined $ndf->{data}->[$quad_width]->[$quad_height] ? 1 : 0;
     $used[3] = defined $ndf->{data}->[1]->[$quad_height] ? 1 : 0;
+
+    # rotate to account for assumed anchor corner
+    for (1..$anch) {
+        unshift @used, pop @used;
+    }
+
+    say "USED: @used" if ($debug);
+    say "SKIPPING $skip" if ($debug && defined $skip);
 
     # set intensity bounds and do linear stretch
     my $pdl_mod = $pdl->copy;
@@ -2035,6 +2050,7 @@ sub optimize_corners {
     for (0..$#corners) {
 
         next CORNER if (defined $skip && $_ == $skip);
+        say "Optimizing corner $_" if ($debug);
         
         my $pt = $corners[$_];
         my ($x,$y);
@@ -2088,7 +2104,8 @@ sub optimize_corners {
             ++$x_test;
         }
         my @ordered = sort {$b <=> $a} keys %sums;
-        my $best_point = $used[$_] ? $sums{ $ordered[0] } : $sums{ $ordered[-1] };
+        my $best_sum = $used[$_] ? $ordered[0] : $ordered[-1];
+        my $best_point = $sums{ $best_sum };
         if ($used[$_] && $ordered[0]/($w*$h) < $opt_th*(2**$curr_bits-1)) {
             warn "optimal sum for ($x,$y) below threshold, not optimizing\n" if ($debug);
             next CORNER;
@@ -2402,6 +2419,7 @@ sub find_transform {
     for (0..$norm_spots-1) {
         push @vals, $dists[$_]->[3];
     }
+    warn "C_l median\n" if ($debug);
     my $C_l = median(@vals);
        
     # find local blank estimate
@@ -2416,6 +2434,7 @@ sub find_transform {
     for (0..$norm_spots-1) {
         push @vals, $dists[$_]->[3];
     }
+    warn "B_l median\n" if ($debug);
     my $B_l = median(@vals);
 
     # calculate slope and intercept of transform
