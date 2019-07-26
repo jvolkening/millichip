@@ -193,7 +193,8 @@ my $in_dir;
 my $pair_fn;
 my $padding = 2;
 my $method  = 'median';
-my $bg_rm   = 0;
+my $bg_rm   = 1;
+my $global_bg = 0;
 my $upper   = 0.95;
 my $lower   = 0.50;
 my $cbin    = 2;
@@ -236,7 +237,8 @@ my $success = GetOptions(
     'pair_out:s'   => \$pair_fn,
     'padding:i'    => \$padding,
     'method:s'     => \$method,
-    'bg_rm'        => \$bg_rm,
+    'bg_rm!'       => \$bg_rm,
+    'global_bg'    => \$global_bg,
     'upper=f'      => \$upper,
     'lower=f'      => \$lower,
     'cbin=f'       => \$cbin,
@@ -1075,16 +1077,21 @@ sub print_pair {
                     $int = $m * $int + $b;
                 }
                 if ($bg_rm) {
-                    my $bg = get_bg(
-                        $quad,
-                        $p_col,
-                        $p_row,
-                        $extract_functions{$method} 
-                    );
-                    if ($lln) {
-                        $bg = $m * $bg + $b;
+                    if ($global_bg) {
+                        $int -= $B_g;
                     }
-                    $int -= $bg;
+                    else {
+                        my $bg = get_bg(
+                            $quad,
+                            $p_col,
+                            $p_row,
+                            $extract_functions{$method} 
+                        );
+                        if ($lln) {
+                            $bg = $m * $bg + $b;
+                        }
+                        $int -= $bg;
+                    }
                 }
 
                 my $img_id = $quad->{filename};
